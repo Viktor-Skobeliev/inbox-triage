@@ -1,0 +1,564 @@
+{
+  "schema_version": "1.0",
+  "run": {
+    "started_at": "2026-07-29T10:42:07+00:00",
+    "finished_at": "2026-07-29T10:42:36+00:00",
+    "provider": "openrouter",
+    "base_url": "https://openrouter.ai/api/v1",
+    "model": "google/gemini-2.5-flash",
+    "temperature": 0.0,
+    "prompt_version": "v1",
+    "max_attempts": 3,
+    "total_requests": 18,
+    "succeeded": 18,
+    "failed": 0,
+    "retried": 3,
+    "cache_hits": 0,
+    "llm_calls": 23,
+    "token_usage": {
+      "prompt_tokens": 27959,
+      "completion_tokens": 3258
+    }
+  },
+  "records": [
+    {
+      "id": "REQ-001",
+      "channel": "Slack",
+      "timestamp": "2026-06-08 09:14",
+      "raw_text": "Привіт! Можна якось автоматизувати щотижневий звіт по Google Ads? Зараз руками вивантажую CSV і копіюю в табличку щопонеділка, займає десь годину. Треба основні метрики по кампаніях.",
+      "status": "ok",
+      "extraction": {
+        "category": "автоматизація",
+        "target_department": null,
+        "priority": "medium",
+        "short_summary": "Потрібна автоматизація щотижневого звіту по Google Ads з основними метриками по кампаніях.",
+        "requested_actions": [
+          "Автоматизувати вивантаження щотижневого звіту по Google Ads",
+          "Налаштувати копіювання даних в табличку"
+        ],
+        "needs_clarification": true,
+        "work_item_type": "project",
+        "mentioned_systems": [
+          "Google Ads"
+        ],
+        "urgency_signals": [],
+        "clarification_questions": [
+          "Які саме основні метрики потрібні?",
+          "В яку саме табличку потрібно копіювати дані?",
+          "Чи є конкретні вимоги до формату таблиці або візуалізації даних?"
+        ]
+      },
+      "duplicate_of": null,
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-002",
+      "channel": "Telegram",
+      "timestamp": "2026-06-08 09:31",
+      "raw_text": "хлопці треба бот",
+      "status": "ok",
+      "extraction": {
+        "category": "автоматизація",
+        "target_department": null,
+        "priority": "medium",
+        "short_summary": "Потрібен бот.",
+        "requested_actions": [
+          "Розробити бота"
+        ],
+        "needs_clarification": true,
+        "work_item_type": "project",
+        "mentioned_systems": [],
+        "urgency_signals": [],
+        "clarification_questions": [
+          "Який функціонал має виконувати бот?",
+          "Для якої платформи потрібен бот?",
+          "Яка мета створення бота?"
+        ]
+      },
+      "duplicate_of": null,
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-003",
+      "channel": "Email",
+      "timestamp": "2026-06-08 10:02",
+      "raw_text": "Доброго дня. У відділі продажів накопичується багато транскриптів дзвінків з клієнтами. Хочемо, щоб по кожному дзвінку автоматично формувалося коротке саммарі + список домовленостей, і це падало в PlanFix у картку угоди. Це реально?",
+      "status": "ok",
+      "extraction": {
+        "category": "автоматизація",
+        "target_department": "продажі",
+        "priority": "medium",
+        "short_summary": "Автоматичне формування саммарі та списку домовленостей з транскриптів дзвінків та інтеграція з PlanFix.",
+        "requested_actions": [
+          "автоматичне формування саммарі дзвінків",
+          "автоматичне формування списку домовленостей",
+          "інтеграція з PlanFix для додавання інформації в картку угоди"
+        ],
+        "needs_clarification": false,
+        "work_item_type": "project",
+        "mentioned_systems": [
+          "PlanFix"
+        ],
+        "urgency_signals": [],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [
+        "recovered after 2 attempts"
+      ],
+      "attempts": 2,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-004",
+      "channel": "Slack",
+      "timestamp": "2026-06-08 10:20",
+      "raw_text": "Питання радше теоретичне: чи можна взагалі за допомогою AI оцінювати якість наших статей у блозі перед публікацією? Поки що нічого впроваджувати не треба, просто цікаво ваша думка.",
+      "status": "ok",
+      "extraction": {
+        "category": "питання/консультація",
+        "target_department": null,
+        "priority": "low",
+        "short_summary": "Запит на теоретичну консультацію щодо можливості оцінки якості статей блогу за допомогою AI.",
+        "requested_actions": [],
+        "needs_clarification": false,
+        "work_item_type": "question",
+        "mentioned_systems": [],
+        "urgency_signals": [
+          "Поки що нічого впроваджувати не треба",
+          "просто цікаво ваша думка"
+        ],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-005",
+      "channel": "Telegram",
+      "timestamp": "2026-06-08 11:05",
+      "raw_text": "ГОРИТЬ. Сьогодні до вечора треба вивантажити список усіх контрагентів з витратами понад 50к за травень, бухгалтерія просить терміново. можете швидко?",
+      "status": "ok",
+      "extraction": {
+        "category": "звіт/аналітика",
+        "target_department": "фінанси/бухгалтерія",
+        "priority": "high",
+        "short_summary": "Потрібна вивантаження списку контрагентів з витратами понад 50к за травень до кінця дня.",
+        "requested_actions": [
+          "Вивантажити список контрагентів з витратами понад 50к за травень"
+        ],
+        "needs_clarification": false,
+        "work_item_type": "one_off",
+        "mentioned_systems": [],
+        "urgency_signals": [
+          "ГОРИТЬ",
+          "Сьогодні до вечора",
+          "терміново",
+          "можете швидко?"
+        ],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-006",
+      "channel": "Email",
+      "timestamp": "2026-06-08 11:40",
+      "raw_text": "Hi team, we need a small service that takes our weekly analytics export from BigQuery and generates a short plain-language summary of the key changes week-over-week. Output ideally in a Google Doc. Хто може взятись?",
+      "status": "ok",
+      "extraction": {
+        "category": "автоматизація",
+        "target_department": null,
+        "priority": "medium",
+        "short_summary": "Потрібен сервіс для автоматичного створення короткого текстового звіту про зміни тиждень до тижня на основі експорту аналітики з BigQuery.",
+        "requested_actions": [
+          "Розробити сервіс для обробки експорту з BigQuery",
+          "Генерувати короткий текстовий звіт про зміни тиждень до тижня",
+          "Виводити звіт у Google Doc"
+        ],
+        "needs_clarification": false,
+        "work_item_type": "project",
+        "mentioned_systems": [
+          "BigQuery",
+          "Google Doc"
+        ],
+        "urgency_signals": [],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-007",
+      "channel": "Slack",
+      "timestamp": "2026-06-08 12:15",
+      "raw_text": "У нас зламалась автоматизація по інвойсам з Мети — з понеділка нічого не парситься, рахунки висять. Хто це робив? треба полагодити",
+      "status": "ok",
+      "extraction": {
+        "category": "баг/підтримка",
+        "target_department": null,
+        "priority": "high",
+        "short_summary": "Зламалась автоматизація парсингу інвойсів з Мети, потрібно полагодити.",
+        "requested_actions": [
+          "Полагодити автоматизацію парсингу інвойсів з Мети"
+        ],
+        "needs_clarification": false,
+        "work_item_type": "incident",
+        "mentioned_systems": [
+          "Мета"
+        ],
+        "urgency_signals": [
+          "зламалась автоматизація",
+          "з понеділка нічого не парситься",
+          "рахунки висять",
+          "треба полагодити"
+        ],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-008",
+      "channel": "Telegram",
+      "timestamp": "2026-06-08 13:02",
+      "raw_text": "дякую за вчора, все працює супер 🙌",
+      "status": "ok",
+      "extraction": {
+        "category": "поза скоупом",
+        "target_department": null,
+        "priority": "low",
+        "short_summary": "Подяка за виконану роботу",
+        "requested_actions": [],
+        "needs_clarification": false,
+        "work_item_type": "non_actionable",
+        "mentioned_systems": [],
+        "urgency_signals": [],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [
+        "recovered after 3 attempts"
+      ],
+      "attempts": 3,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-009",
+      "channel": "Email",
+      "timestamp": "2026-06-08 13:48",
+      "raw_text": "Колеги, в HR хочемо прискорити первинний скринінг резюме на технічні вакансії. Ідея: завантажуємо PDF резюме, на виході — структуровані поля (досвід, стек, відповідність вимогам) і коротка оцінка. Обсяг — десь 30-50 резюме на тиждень.",
+      "status": "ok",
+      "extraction": {
+        "category": "автоматизація",
+        "target_department": "hr",
+        "priority": "medium",
+        "short_summary": "Запит на автоматизацію первинного скринінгу резюме для технічних вакансій.",
+        "requested_actions": [
+          "Розробити систему для завантаження PDF резюме",
+          "Створити функціонал для вилучення структурованих полів (досвід, стек, відповідність вимогам)",
+          "Реалізувати коротку оцінку резюме"
+        ],
+        "needs_clarification": false,
+        "work_item_type": "project",
+        "mentioned_systems": [],
+        "urgency_signals": [],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-010",
+      "channel": "Slack",
+      "timestamp": "2026-06-08 14:11",
+      "raw_text": "Можна автоматизувати збір згадок про Netpeak в телеграм-каналах і робити дайджест раз на день? І ще окремо — алерт, якщо згадка негативна. Дві задачі по суті, але обидві про моніторинг.",
+      "status": "ok",
+      "extraction": {
+        "category": "автоматизація",
+        "target_department": null,
+        "priority": "medium",
+        "short_summary": "Запит на автоматизацію збору згадок про Netpeak в Telegram-каналах з щоденним дайджестом та алертом на негативні згадки.",
+        "requested_actions": [
+          "Автоматизувати збір згадок про Netpeak в Telegram-каналах",
+          "Створювати щоденний дайджест згадок",
+          "Налаштувати алерт на негативні згадки"
+        ],
+        "needs_clarification": false,
+        "work_item_type": "project",
+        "mentioned_systems": [
+          "Telegram"
+        ],
+        "urgency_signals": [],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-011",
+      "channel": "Telegram",
+      "timestamp": "2026-06-08 14:55",
+      "raw_text": "нам би табличку якусь",
+      "status": "ok",
+      "extraction": {
+        "category": "звіт/аналітика",
+        "target_department": null,
+        "priority": "low",
+        "short_summary": "Запит на створення якоїсь таблички.",
+        "requested_actions": [
+          "Створити табличку"
+        ],
+        "needs_clarification": true,
+        "work_item_type": "question",
+        "mentioned_systems": [],
+        "urgency_signals": [],
+        "clarification_questions": [
+          "Які дані мають бути в табличці?",
+          "Для чого потрібна ця табличка?",
+          "Який формат таблички очікується (Excel, Google Sheets, тощо)?"
+        ]
+      },
+      "duplicate_of": null,
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-012",
+      "channel": "Email",
+      "timestamp": "2026-06-08 15:30",
+      "raw_text": "Доброго дня! Хотіли б закупити новий потужний ноутбук для рендеру відео в SMM-відділі, бюджет до 80к. Куди подати заявку?",
+      "status": "ok",
+      "extraction": {
+        "category": "поза скоупом",
+        "target_department": "smm",
+        "priority": "medium",
+        "short_summary": "Запит на закупівлю нового ноутбука для SMM-відділу.",
+        "requested_actions": [
+          "Подати заявку на закупівлю ноутбука"
+        ],
+        "needs_clarification": false,
+        "work_item_type": "non_actionable",
+        "mentioned_systems": [],
+        "urgency_signals": [],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [
+        "non_actionable_but_actions_listed"
+      ],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-013",
+      "channel": "Slack",
+      "timestamp": "2026-06-08 16:02",
+      "raw_text": "Привіт. Той самий звіт по Google Ads, що Оля просила в понеділок — мені теж дуже потрібен, я в тій же команді. Можна щоб і мені приходив?",
+      "status": "ok",
+      "extraction": {
+        "category": "звіт/аналітика",
+        "target_department": null,
+        "priority": "medium",
+        "short_summary": "Запит на отримання того ж звіту по Google Ads, що був замовлений раніше іншим членом команди.",
+        "requested_actions": [
+          "Налаштувати отримання звіту по Google Ads для нового користувача"
+        ],
+        "needs_clarification": false,
+        "work_item_type": "project",
+        "mentioned_systems": [
+          "Google Ads"
+        ],
+        "urgency_signals": [],
+        "clarification_questions": []
+      },
+      "duplicate_of": "REQ-001",
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-014",
+      "channel": "Telegram",
+      "timestamp": "2026-06-08 16:40",
+      "raw_text": "є ідея, гляньте https://example.com/some-tool можливо щось схоже зробимо для нас, не горить",
+      "status": "ok",
+      "extraction": {
+        "category": "автоматизація",
+        "target_department": null,
+        "priority": "low",
+        "short_summary": "Пропозиція розглянути аналогічне рішення для автоматизації на основі зовнішнього інструменту.",
+        "requested_actions": [
+          "Розглянути інструмент за посиланням",
+          "Оцінити можливість створення схожого рішення"
+        ],
+        "needs_clarification": false,
+        "work_item_type": "project",
+        "mentioned_systems": [],
+        "urgency_signals": [
+          "не горить"
+        ],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-015",
+      "channel": "Email",
+      "timestamp": "2026-06-08 17:12",
+      "raw_text": "Команда контенту просить інструмент, який з довгого інтерв'ю (текст 10-15 сторінок) робить 5 коротких постів для соцмереж у нашому tone of voice. Пріоритет середній, треба десь до кінця місяця.",
+      "status": "ok",
+      "extraction": {
+        "category": "автоматизація",
+        "target_department": "контент",
+        "priority": "medium",
+        "short_summary": "Команда контенту просить інструмент для автоматичного створення коротких постів для соцмереж з довгих інтерв'ю.",
+        "requested_actions": [
+          "Розробити інструмент для генерації постів для соцмереж з інтерв'ю"
+        ],
+        "needs_clarification": false,
+        "work_item_type": "project",
+        "mentioned_systems": [],
+        "urgency_signals": [
+          "Пріоритет середній",
+          "треба десь до кінця місяця"
+        ],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-016",
+      "channel": "Slack",
+      "timestamp": "2026-06-09 09:08",
+      "raw_text": "чат це нормально що в ассистента по базі знань іноді відповіді не зовсім по темі? просто хочу зрозуміти це баг чи так і має бути",
+      "status": "ok",
+      "extraction": {
+        "category": "баг/підтримка",
+        "target_department": "it/підтримка",
+        "priority": "medium",
+        "short_summary": "Запит щодо нерелевантних відповідей асистента по базі знань.",
+        "requested_actions": [],
+        "needs_clarification": true,
+        "work_item_type": "incident",
+        "mentioned_systems": [],
+        "urgency_signals": [],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [
+        "recovered after 2 attempts",
+        "actionable_but_no_requested_actions",
+        "needs_clarification_forced_true",
+        "needs_clarification_without_questions",
+        "department_not_named_in_text"
+      ],
+      "attempts": 2,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-017",
+      "channel": "Telegram",
+      "timestamp": "2026-06-09 09:50",
+      "raw_text": "терміново треба інтеграція слака з планфіксом щоб задачі з каналу #support автоматом створювались тікетами. дуже багато ручної роботи зараз",
+      "status": "ok",
+      "extraction": {
+        "category": "інтеграція",
+        "target_department": null,
+        "priority": "high",
+        "short_summary": "Потрібна інтеграція Slack з PlanFix для автоматичного створення тікетів із каналу #support.",
+        "requested_actions": [
+          "Інтегрувати Slack з PlanFix",
+          "Налаштувати автоматичне створення тікетів у PlanFix з каналу #support"
+        ],
+        "needs_clarification": false,
+        "work_item_type": "project",
+        "mentioned_systems": [
+          "слака",
+          "планфіксом"
+        ],
+        "urgency_signals": [
+          "терміново",
+          "дуже багато ручної роботи зараз"
+        ],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    },
+    {
+      "id": "REQ-018",
+      "channel": "Email",
+      "timestamp": "2026-06-09 10:25",
+      "raw_text": "Доброго ранку. Аналітика хоче дашборд, який раз на день підтягує дані з BigQuery і показує аномалії у витратах по підрядниках (різкі стрибки). Бажано з поясненням природною мовою, чому щось виглядає підозріло.",
+      "status": "ok",
+      "extraction": {
+        "category": "звіт/аналітика",
+        "target_department": "аналітика",
+        "priority": "medium",
+        "short_summary": "Потрібен дашборд для щоденного відстеження аномалій у витратах по підрядниках з BigQuery.",
+        "requested_actions": [
+          "Створити дашборд",
+          "Налаштувати щоденне підтягування даних з BigQuery",
+          "Реалізувати виявлення аномалій у витратах по підрядниках",
+          "Додати пояснення аномалій природною мовою"
+        ],
+        "needs_clarification": false,
+        "work_item_type": "project",
+        "mentioned_systems": [
+          "BigQuery"
+        ],
+        "urgency_signals": [],
+        "clarification_questions": []
+      },
+      "duplicate_of": null,
+      "rule_flags": [],
+      "attempts": 1,
+      "error": null,
+      "raw_response": null
+    }
+  ]
+}
