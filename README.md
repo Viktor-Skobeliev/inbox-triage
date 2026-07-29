@@ -1,97 +1,100 @@
 # Inbox Triage
 
-Сервіс читає вивантаження інбоксу внутрішніх запитів (`input_requests.csv`),
-через LLM витягує з кожного запиту структуровані поля, перевіряє вивід моделі
-детермінованим кодом і формує `output.json` та `report.md`.
+Reads an export of internal requests (`input_requests.csv`), extracts structured
+fields from each one with an LLM, checks the model's output with deterministic
+code, and writes `output.json` and `report.md`.
 
-Ідея рішення: модель відповідає за судження і мову, а все, що мусить бути
-точним, живе в коді і покрите тестами. Тому перевірок дві, а не одна: схема
-ловить форму відповіді, окремі правила ловлять зміст.
+The idea behind it: the model does the judgement and the language, and anything
+that has to be exact lives in code and is covered by tests. So there are two
+checks rather than one. The schema catches the shape of the answer, separate
+rules catch the content.
 
-Приклад справжнього прогону на 18 наданих рядках лежить в
-[`examples/`](examples/).
-
----
-
-## Про час і інструменти
-
-Орієнтир у завданні - 2-3 години. У мене вийшло більше: вечір після отримання
-завдання і наступний день. Найдовше зайняло не саме вилучення полів, а межі
-рішення: що робити, коли модель повертає валідний, але неправильний вивід, і як
-показати це людині, яка читатиме звіт.
-
-Писав із Claude Code - тим самим інструментом, про який ви питали на першому
-етапі. Рішення про схему, детерміновані правила і те, які саме рядки датасету є
-пастками, мої; код і тести ми писали разом, а потім я ганяв рев'ю і живі прогони
-і правив те, що вони показували. Два таких прогони змінили рішення по суті:
-перший не знайшов жодного дубля, бо прохід бачив тільки перекази, а не текст;
-другий показав, що модель вигадує відділ там, де його в тексті немає.
+Output of a real run over the 18 supplied rows is in [`examples/`](examples/).
+The report itself is written in Ukrainian, since that is the language of the
+inbox and of the people who read it.
 
 ---
 
-## Як запустити
+## Time and tooling
 
-Потрібен Python 3.11+.
+The brief suggests 2-3 hours. It took me longer: the evening I received it and
+the following day. The extraction itself was not the slow part. The limits
+were: what to do when the model returns output that is valid but wrong, and how
+to show that to the person who reads the report.
+
+I wrote it with Claude Code, the same tool you asked about at the first stage.
+The decisions about the schema, the deterministic rules and which rows of the
+dataset are traps are mine; the code and the tests we wrote together, and then I
+ran reviews and live runs and fixed what they showed. Two of those runs changed
+the solution: the first found no duplicates at all, because the pass only saw
+one-line summaries instead of the text, and the second showed the model
+inventing a department where the text names none.
+
+---
+
+## Running it
+
+Python 3.11+.
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 
-cp .env.example .env             # і вписати ключ
+cp .env.example .env             # then put a key in it
 python -m inbox_triage
 ```
 
-Результат зʼявиться в `output/output.json` і `output/report.md`.
+Results appear in `output/output.json` and `output/report.md`.
 
-### Провайдер
+### Provider
 
-Провайдер не зашитий у код. Підходить будь-який, що говорить OpenAI-сумісним
-`/chat/completions`: досить вибрати `LLM_PROVIDER` і покласти ключ у
+The provider is not baked into the code. Anything that speaks the OpenAI
+`/chat/completions` shape works: pick `LLM_PROVIDER` and put its key in
 `LLM_API_KEY`.
 
-| `LLM_PROVIDER` | Ключ | Модель за замовчуванням |
+| `LLM_PROVIDER` | Key | Default model |
 |---|---|---|
 | `openrouter` | https://openrouter.ai/keys | `google/gemini-2.5-flash` |
 | `openai` | https://platform.openai.com/api-keys | `gpt-4o-mini` |
-| `gemini` | https://aistudio.google.com/apikey (безкоштовний тір) | `gemini-2.5-flash` |
-| `groq`, `together` | у відповідних консолях | див. `llm/http_client.py` |
-| інший | - | вкажіть `LLM_BASE_URL` |
+| `gemini` | https://aistudio.google.com/apikey (free tier is enough) | `gemini-2.5-flash` |
+| `groq`, `together` | their own consoles | see `llm/http_client.py` |
+| anything else | - | set `LLM_BASE_URL` |
 
-### Змінні оточення
+### Environment variables
 
-| Змінна | За замовчуванням | Навіщо |
+| Variable | Default | What it does |
 |---|---|---|
-| `LLM_PROVIDER` | `openrouter` | пресет base URL і моделі |
-| `LLM_API_KEY` | обовʼязкова | також підхоплюються `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` |
-| `LLM_MODEL` | пресет провайдера | будь-яка модель, доступна на цьому ключі |
-| `LLM_BASE_URL` | пресет провайдера | для шлюзу, якого немає в списку |
-| `LLM_TEMPERATURE` | `0` | див. розділ про недетермінізм |
-| `LLM_MAX_ATTEMPTS` | `3` | скільки разів пробувати полагодити невалідний вивід |
-| `LLM_CONCURRENCY` | `4` | паралельні запити до API |
-| `LLM_JSON_MODE` | `true` | просити в API строгий JSON; вимикається само, якщо модель відхилила |
-| `LLM_CACHE_DIR` | `.cache/llm` | кеш відповідей, порожнє значення вимикає |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | - | лише для `--telegram` |
+| `LLM_PROVIDER` | `openrouter` | preset base URL and model |
+| `LLM_API_KEY` | required | the provider's own name works too: `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` (or `GOOGLE_API_KEY`), `GROQ_API_KEY`, `TOGETHER_API_KEY` |
+| `LLM_MODEL` | provider preset | any model available on that key |
+| `LLM_BASE_URL` | provider preset | for a gateway that is not in the list |
+| `LLM_TEMPERATURE` | `0` | see the section on non-determinism |
+| `LLM_MAX_ATTEMPTS` | `3` | repair attempts per row when the output is invalid |
+| `LLM_CONCURRENCY` | `4` | parallel requests |
+| `LLM_JSON_MODE` | `true` | ask the API for strict JSON; dropped automatically if the model rejects it |
+| `LLM_CACHE_DIR` | `.cache/llm` | response cache, empty value disables it |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | - | only for `--telegram` |
 
-### Аргументи CLI
+### CLI
 
 ```bash
 python -m inbox_triage --input data/input_requests.csv --output-dir output
 python -m inbox_triage --provider openai --model gpt-4o-mini
-python -m inbox_triage --limit 3            # тільки перші 3 рядки
-python -m inbox_triage --concurrency 1      # послідовно
-python -m inbox_triage --no-cache           # ігнорувати кеш
-python -m inbox_triage --no-dedup           # без проходу по дублікатах
+python -m inbox_triage --limit 3            # first 3 rows only
+python -m inbox_triage --concurrency 1      # sequential
+python -m inbox_triage --no-cache           # ignore the cache
+python -m inbox_triage --no-dedup           # skip the cross-request pass
 python -m inbox_triage --max-attempts 5
-python -m inbox_triage --telegram           # надіслати дайджест
-python -m inbox_triage --verbose            # детальний лог
-python -m inbox_triage --quiet              # тільки помилки
+python -m inbox_triage --telegram           # send a digest
+python -m inbox_triage --verbose            # debug logging
+python -m inbox_triage --quiet              # errors only
 ```
 
-Код повернення: `0` якщо всі запити розібрані, `1` якщо хоча б один потрапив у
-`failed`, `2` якщо вхідний файл або ключ непридатні. Файли пишуться в усіх
-випадках, крім останнього, і пишуться атомарно: обірваний прогін не залишить
-обрізаний `output.json` на місці попереднього.
+Exit codes: `0` when every request was parsed, `1` when at least one ended up
+`failed`, `2` when the input file or the key is unusable. Files are written in
+every case except the last, and written atomically: an interrupted run cannot
+leave a truncated `output.json` where the previous good one was.
 
 ### Docker
 
@@ -100,281 +103,284 @@ docker build -t inbox-triage .
 docker run --rm --env-file .env -v "$PWD/output:/app/output" inbox-triage
 ```
 
-### Тести
+### Tests
 
 ```bash
 pytest
 ```
 
-Уся сюїта **офлайн**: ключ і мережа не потрібні. Місце LLM займає скриптований
-фейк, який на замовлення повертає обрізаний JSON, вигадану категорію,
-відповідь у markdown-обгортці або суцільний текст. HTTP-клієнт перевіряється
-через mock-транспорт: 429 з backoff, обрив зʼєднання, таймаут, 401, невідома
-модель, помилка в тілі відповіді зі статусом 200. Окремий файл
-`tests/test_edge_cases.py` - те, що ламається на кривому вході, ворожому тексті
-або дивній відповіді провайдера.
+The whole suite is **offline**: no key, no network. A scripted fake stands in
+for the LLM and returns, on demand, truncated JSON, an invented category, an
+answer wrapped in markdown, or plain prose. The HTTP client is driven through a
+mock transport: 429 with backoff, a dropped connection, a timeout, 401, an
+unknown model, an error object arriving with status 200. `tests/test_edge_cases.py`
+holds what breaks on malformed input, hostile text and strange provider
+responses.
 
-Статичні перевірки: `ruff check .`, `ruff format --check .`, `mypy` (strict).
-Те саме крутиться в CI на кожен push.
-
----
-
-## Що на виході
-
-**`output.json`** - `schema_version`, блок `run` з параметрами прогону
-(провайдер, модель, temperature, версія промпту, токени, скільки запитів
-довелось повторювати) і масив `records`. Кожен запис містить оригінальний
-рядок, структурований вивід, спрацьовані правила і, якщо не вийшло, помилку та
-обрізану сиру відповідь моделі.
-
-**`report.md`** - **черга робіт** (що брати першим, за пріоритетом), агрегати по
-категоріях, пріоритетах, відділах і типах роботи; список тих, що потребують
-уточнення, **разом із питаннями, які треба поставити автору**; знайдені
-дублікати; невдачі; таблиця спрацювань перевірок.
+Static checks: `ruff check .`, `ruff format --check .`, `mypy` (strict). CI runs
+the same on Python 3.11 and 3.12.
 
 ---
 
-## Як влаштовано
+## Output
+
+**`output.json`** carries `schema_version`, a `run` block with the parameters of
+the run (provider, model, temperature, prompt version, tokens, how many requests
+had to be retried) and a `records` array. Every record keeps the original row,
+the structured output, the rules that fired and, when it did not work out, the
+error and a truncated raw response from the model.
+
+**`report.md`** leads with a **work queue** (what to pick up first, by priority),
+then aggregates by category, priority, department and work type; the list of
+requests that need clarification **together with the questions to ask their
+authors**; duplicates found; failures; and a table of checks that fired.
+
+---
+
+## How it works
 
 ```
 CSV
- │  csv_loader: валідація файлу, пропущені рядки з причиною
+ │  csv_loader: validate the file, skipped rows with a reason
  ▼
 LLM (temperature 0, response_format=json_object)
- │  кеш на диску за sha256(провайдер + модель + параметри + промпт)
+ │  disk cache keyed by sha256(provider + model + parameters + prompt)
  ▼
-parsing: витягти JSON з тексту, нормалізувати відомі варіації
+parsing: recover JSON from the text, normalise known variations
  ▼
-models: строга Pydantic-схема
- │  ✗ ──► repair-промпт із текстом помилки валідатора ──► ще спроба
- │              ✗ бюджет вичерпано ──► запис failed, прогін триває
+models: strict Pydantic schema
+ │  ✗ ──► repair prompt quoting the validator ──► another attempt
+ │              ✗ budget spent ──► failed record, the run continues
  ▼
-rules: детерміновані перевірки змісту
+rules: deterministic checks on the content
  ▼
-dedup: окремий прохід по всьому набору
+dedup: a separate pass over the whole set
  ▼
 output.json + report.md
 ```
 
-**Розбір JSON окремо від валідації.** Модель повертає обʼєкт у кодовому блоці,
-з фразою перед ним, іноді з фігурною дужкою всередині тексту. Пошук
-збалансованих обʼєктів з урахуванням лапок і екранування перебирає всіх
-кандидатів, а не тільки перший.
+**Recovering JSON is separate from validating it.** The model returns the object
+inside a code fence, with a sentence in front of it, sometimes with a curly
+brace inside the prose. The scan walks every balanced object, respecting quotes
+and escapes, and prefers the one that actually carries schema fields.
 
-**Нормалізація перед схемою, а не в схемі.** `"Автоматизация"` замість
-`"автоматизація"`, `"true"` замість `true`, рядок замість списку - відомі
-дефекти, не варті витрати спроби. Кожне виправлення записується в `rule_flags`,
-тому видно, скільки прогін потребував ремонту. Незнайоме значення нормалізатор
-**не чіпає**: його має відхилити схема, щоб repair-промпт цитував справжню
-помилку. Єдиний виняток - `target_department`, де стабільність агрегату важливіша
-за точність назви (див. нижче).
+**Normalisation happens before the schema, not inside it.** `"Автоматизация"`
+instead of `"автоматизація"`, `"true"` instead of `true`, a bare string where a
+list was asked for: known defects, not worth spending an attempt on. Every fix
+is recorded in `rule_flags`, so it is visible how much repair a run needed. An
+unrecognised value is **left alone** on purpose, so the schema rejects it and
+the repair prompt can quote a real error. The one exception is
+`target_department`, where a stable aggregate matters more than the exact label.
 
-**Repair-промпт цитує валідатор** і передає оригінальний запит. Якщо перша
-відповідь була не JSON, а вибаченням, латати нема чого і треба відповісти з
-нуля.
+**The repair prompt quotes the validator** and repeats the original request. If
+the first answer was an apology rather than JSON there is nothing to patch, and
+the model has to answer from scratch.
 
-**Невдача - це запис, а не виняток.** Після вичерпання спроб запис зберігається
-зі статусом `failed`, помилкою і сирою відповіддю. Один зіпсований рядок не
-зупиняє обробку решти, і це стосується не тільки помилок валідації: будь-який
-несподіваний виняток з клієнта коштує одного рядка, а не прогону.
+**A failure is a record, not an exception.** Once the attempts are spent the row
+is stored with status `failed`, the error and the raw response. One bad row does
+not stop the rest, and that holds for more than validation errors: any
+unexpected exception from the client costs one row rather than the run.
 
 ---
 
-## Схема
+## Schema
 
-Обовʼязкові поля з завдання: `category`, `target_department`, `priority`,
+Required by the brief: `category`, `target_department`, `priority`,
 `short_summary`, `requested_actions`, `needs_clarification`.
 
-Розширення. Кожне зʼявилось тому, що конкретний рядок датасету без нього
-обробляється неправильно.
+Extensions. Each one is here because a specific row of the dataset is handled
+wrongly without it.
 
-| Поле | Навіщо | Звідки видно |
+| Field | Why | Which row shows it |
 |---|---|---|
-| `work_item_type` | `category` каже, **про що** запит, це поле - **що з нього стане в роботі** | REQ-005: термінова разова вивантаження, автоматизувати нічого. REQ-007: зламалась наявна автоматизація, це не нова розробка. REQ-008: подяка. Без поля всі троє лягають у бек-лог як проєкти |
-| `clarification_questions` | сам прапорець `needs_clarification` не каже, **що** питати, і читач усе одно відкриває оригінал | REQ-002 «хлопці треба бот», REQ-011 «нам би табличку якусь» |
-| `mentioned_systems` | кому віддавати задачу і чим шукати дублікати | Google Ads, PlanFix, BigQuery, Мета |
-| `urgency_signals` | дослівні цитати, які обґрунтовують `priority`, роблять його **перевіряним** | REQ-005 «ГОРИТЬ», REQ-014 «не горить» |
-| `duplicate_of` | ставиться окремим проходом, з одного запиту не виводиться | REQ-013 - той самий звіт, що REQ-001 |
+| `work_item_type` | `category` says **what the request is about**, this says **what it turns into on our side** | REQ-005 is an urgent one-off export with nothing to automate. REQ-007 is an existing pipeline that broke, not new development. REQ-008 is a thank-you note. Without this field all three land in the backlog as projects |
+| `clarification_questions` | the `needs_clarification` flag alone does not say **what** to ask, so the reader opens the original anyway | REQ-002 "хлопці треба бот", REQ-011 "нам би табличку якусь" |
+| `mentioned_systems` | who owns the task, and what to match duplicates on | Google Ads, PlanFix, BigQuery, Meta |
+| `urgency_signals` | verbatim quotes justifying `priority`, which makes it **checkable** | REQ-005 "ГОРИТЬ", REQ-014 "не горить" |
+| `duplicate_of` | set by a separate pass, cannot be derived from one request | REQ-013 is the same report as REQ-001 |
 
-Кожне з цих полів хтось читає: правила, звіт або прохід по дублікатах. Поля,
-які нічого не живлять, у схемі не тримаються - вони коштують токенів на кожному
-запиті і дають моделі ще один шанс помилитись.
+Something reads every one of these: the rules, the report or the duplicate pass.
+Fields that feed nothing do not stay in the schema. They cost tokens on every
+request and give the model one more thing to get wrong.
 
-Чого свідомо **немає**: поля `confidence`. Самооцінка LLM погано калібрована,
-модель однаково впевнена, коли права і коли ні. Замість неї працюють цитати,
-перевірені проти оригіналу, і правила нижче.
+Deliberately **absent**: a `confidence` field. LLM self-assessment is poorly
+calibrated, and the model is equally sure when it is right and when it is not.
+The quotes checked against the source, and the rules below, do that job instead.
 
-**Про `target_department` окремо.** Поле означає відділ-**замовник**, а не
-виконавця: кого призначити - це рішення юніту, а хто просив - факт, який видно
-з тексту і можна перевірити правилом. Список закритий (10 значень, включно з
-`інше`):
-вільний рядок дозволив би моделі вигадувати нову назву щоразу і зламав би
-агрегат у звіті. Незнайоме значення зводиться до `інше` з поміткою в
-`rule_flags`. На наданих даних поле лишається порожнім у більшості запитів -
-тому що більшість авторів свій відділ просто не називають, і вгадувати його за
-темою було б гіршим варіантом, ніж чесний `null`.
-
----
-
-## Детерміновані правила
-
-Виконуються після схеми, у звичайному коді, з фіксованими порогами. Однаковий
-вхід дає однаковий результат незалежно від моделі.
-
-Частина звіряє модель **з текстом запиту**, а не саму з собою. Це найдешевша
-перевірка на вигадування, і вона не коштує додаткового виклику:
-
-- **`urgency_signals` мусять бути в тексті.** Цитата, якої немає в оригіналі,
-  видаляється. Заперечення враховане: «не горить» і навіть «не дуже терміново»
-  не читаються як терміновість.
-- **Відділ перевіряється в обидва боки.** Названий у тексті, але поле порожнє -
-  прапорець. Поле заповнене, а в тексті відділу немає - теж прапорець: на
-  першому живому прогоні «хлопці треба бот» повернулось як `it/підтримка`.
-- **Згадані системи** шукаються з урахуванням відмінювання, бо українською
-  пишуть «з Мети» і «слака з планфіксом».
-
-Решта ловить внутрішні суперечності: `high` без підстав у тексті; задача, яку
-треба брати в роботу, але без жодної дії; `needs_clarification` без питань;
-подяка зі списком дій; «поза скоупом», поставлене як проєкт; занадто короткий
-текст без уточнення.
-
-Правила **виправляють лише там, де вивід суперечить сам собі** і одна зі сторін
-очевидно неправа. Таких місць три: `needs_clarification_forced_true` (запит
-беруть у роботу, але не написано що робити), видалення цитати, якої немає в
-тексті, і зведення невідомого відділу до `інше`. В інших випадках правила лише
-позначають: тихо переписати те, що модель, можливо, зрозуміла краще, гірше за
-видиму позначку.
-
-Прохід по дублікатах теж перевіряється кодом: обидва id мусять існувати,
-оригінал мусить бути раніший **за timestamp**, самопосилання і ланцюжки
-відхиляються. Відхилені пари потрапляють у звіт.
-
-### Захист від інструкцій усередині тексту
-
-Запити приходять від людей у вільній формі, а переслане клієнтське письмо
-теж потрапляє в цей інбокс, тому текст не є довіреним:
-
-- обидва промпти, які бачать текст користувача (розбір запиту і прохід по
-  дублікатах), отримують його **серіалізованим у JSON**, а не вклеєним у рядок:
-  лапка всередині не ламає структуру, а системна інструкція прямо каже, що це
-  дані, а не команди;
-- текст довший за 8000 символів обрізається;
-- фрази на кшталт «ігноруй попередні інструкції» піднімають прапорець
-  `possible_prompt_injection_in_text` (позначка, не блокування: у внутрішньому
-  інбоксі хибне спрацювання дорожче за пропуск);
-- вивід моделі екранується перед рендером у markdown, інакше `|` ламає
-  таблицю, а `[текст](посилання)` створює в звіті клікабельне посилання, якого
-  туди ніхто не клав.
-
-Окремо варто сказати, чого це **не** дає: закриті enum і схема не дозволяють
-моделі повернути щось поза списком, але й не заважають їй поставити
-`priority: high` на прохання автора. Ловить це не схема, а правило про
-відсутність маркера терміновості в тексті.
-
-Ключ провайдера ніколи не потрапляє у вивід: повідомлення про помилку
-проходять через редактор секретів, а відповідь 401 взагалі не цитується, бо
-саме там провайдери найчастіше повертають надісланий ключ.
+**On `target_department`.** The field means the department that **asked**, not
+the one that will do the work. Who to assign is the unit's decision; who asked
+is a fact visible in the text and checkable by a rule. The list is closed (10
+values including `інше`), because a free string would let the model invent a new
+label every run and break the aggregate in the report. An unrecognised value is
+mapped to `інше` with a note in `rule_flags`. On the supplied data the field is
+empty for most requests, simply because most authors never name their
+department, and guessing it from the topic would be worse than an honest `null`.
 
 ---
 
-## Де рішення ламається
+## Deterministic rules
 
-### Невалідний вивід моделі
+They run after the schema, in ordinary code, with fixed thresholds. The same
+input gives the same result regardless of the model.
 
-**Закрито.** Запит JSON на рівні API, витяг обʼєкта з довільного тексту,
-нормалізація відомих варіацій, строга схема з repair-спробами, далі - запис
-`failed` із сирою відповіддю, без падіння прогону.
+Some of them check the model **against the request text** rather than against
+itself. That is the cheapest hallucination check available, and it costs no
+extra call:
 
-**Не закрито:** модель, яка стабільно повертає **валідну, але неправильну**
-структуру. Схема не відрізнить `priority: "low"` від `"high"`, якщо обидва
-формально припустимі. Правила ловлять лише ту частину, яку видно з тексту
-механічно.
+- **`urgency_signals` must occur in the text.** A quote that is not in the
+  original is removed. Negation is handled: "не горить" and even "не дуже
+  терміново" do not read as urgency.
+- **The department is checked both ways.** Named in the text but the field is
+  empty: flag. Field filled but the text names no department: also a flag. On
+  the first live run "хлопці треба бот" came back as `it/підтримка`.
+- **Mentioned systems** are matched allowing for inflection, because Ukrainian
+  writes "з Мети" and "слака з планфіксом".
 
-### Якість класифікації не виміряна
+The rest catch internal contradictions: `high` with nothing in the text to
+support it; a task to be picked up with no action written down;
+`needs_clarification` with no questions; a thank-you note with a to-do list;
+"out of scope" queued as a project; text too short to be a complete request.
 
-Головне обмеження. Немає розміченого вручну еталону, тому невідомо, у скількох
-відсотках випадків `category` і `priority` збігаються з тим, що поставила б
-людина. Стверджувати можна тільки те, що вивід валідний, внутрішньо
-несуперечливий і обґрунтований цитатами. Це не те саме, що правильний.
+Rules **correct only where the output contradicts itself** and one side is
+clearly wrong. There are three such places: `needs_clarification_forced_true`
+(the request is queued but nobody wrote what to do), removing a quote that is
+not in the text, and mapping an unknown department to `інше`. Everywhere else
+they only flag: quietly rewriting something the model may have understood better
+is worse than a visible mark.
 
-Що видно на прогоні в `examples/`: на 18 рядках жоден запис не потрапив у
-`failed`, чотири відповіді довелося ремонтувати і вони пройшли з другої-третьої
-спроби, дубль REQ-013 знайдено. Правила спіймали шість місць, де вивід
-розійшовся з текстом: тричі відділ проставлено там, де в тексті його немає, а
-також запит, узятий у роботу без жодної дії, `non_actionable` зі списком дій і
-`needs_clarification` без жодного питання до автора. Але це один прогін на
-одній моделі, а не замір.
+The duplicate pass is checked in code as well: both ids must exist, the original
+must be earlier **by timestamp**, self-references and chains are rejected.
+Rejected pairs go into the report rather than disappearing.
 
-Як закрити: розмітити 100-150 запитів руками, рахувати accuracy по кожному полю
-окремо і матрицю помилок по категоріях. Без цього будь-яка цифра про «точність»
-була б вигадана.
+### Instructions hidden in the text
 
-### Недетермінізм
+Requests are free-form and written by people, and a forwarded client email lands
+in the same inbox, so the text is not trusted input:
 
-`temperature=0` знижує розкид, але **не гарантує** однаковий вивід: провайдер
-може змінити версію моделі під тим самим іменем, а шлюз на кшталт OpenRouter
-може відправити той самий запит до різних апстрімів.
+- both prompts that see user text (the per-request extraction and the duplicate
+  pass) receive it **serialised as JSON** rather than glued into a string, so a
+  quote inside cannot break the structure, and the system instruction states
+  outright that this is data and not commands;
+- text longer than 8000 characters is truncated;
+- phrases like "ignore previous instructions" raise a
+  `possible_prompt_injection_in_text` flag. A mark, not a block: in an internal
+  inbox a false positive costs more than a miss;
+- model output is escaped before it is rendered into markdown, otherwise a `|`
+  breaks the table and `[text](link)` puts a clickable link in the report that
+  nobody placed there.
 
-Зроблено: кеш відповідей за хешем `провайдер + модель + параметри + промпт`.
-Повторний прогін того самого входу дає той самий результат і коштує нуль
-токенів. Модель, версія промпту і температура пишуться в `output.json`, тому
-два прогони можна порівнювати лише коли вони збігаються.
+Worth saying what this does **not** buy: closed enums and the schema stop the
+model returning anything off-list, but they do not stop it setting
+`priority: high` because the author asked it to. What catches that is not the
+schema but the rule about a missing urgency marker in the text.
 
-Чого це **не** вирішує: перший прогін на новому вході все одно
-недетермінований, а видалення кешу повертає розкид.
+The provider key never reaches the output. Error messages go through a redactor
+that strips the configured key by value as well as by pattern, and a 401 body is
+not quoted at all, since that is where providers most often echo the key back.
 
-### Обсяг
+---
 
-18 рядків - масштаб, на якому все зайве. Що зміниться на 10 000:
+## Where this breaks
 
-- **Ліміти.** Є пул потоків з обмеженням і backoff на 429, але немає черги і
-  розподілу навантаження в часі. Прогін впреться в RPM провайдера.
-- **Памʼять.** Усі записи тримаються в списку і серіалізуються одним файлом.
-  Правильно: потокова обробка і запис JSON Lines по мірі готовності.
-- **Відсутність чекпойнтів.** Обрив на 9000-му рядку означає прогін заново;
-  кеш частково рятує, але це побічний ефект, а не механізм відновлення.
-- **Дублікати.** Прохід передає весь набір одним промптом. На 10 000 запитів це
-  не влізе в контекст. Правильно: попередній відбір кандидатів по ембедингах
-  або перетину `mentioned_systems`, і лише потім LLM на десятки пар.
+### Invalid model output
 
-### Вартість токенів
+**Covered.** JSON requested at the API level, object recovered from arbitrary
+text, known variations normalised, strict schema with repair attempts, and after
+that a `failed` record with the raw response, without taking the run down.
 
-Рахується і виводиться в `report.md` та `output.json` (`run.token_usage`).
-Факт із прогону в `examples/`: 18 запитів, 24 виклики (18 розборів + 5 повторних
-спроб + прохід по дублікатах), 30 821 токен, з них 27 483 вхідних. Тобто основна
-стаття витрат - інструкції, які повторюються в кожному запиті.
+**Not covered:** a model that consistently returns output that is **valid but
+wrong**. The schema cannot tell `priority: "low"` from `"high"` when both are
+formally allowed. The rules catch only the part that is mechanically visible in
+the text.
 
-Чим закривати на обсязі: винести правила в системну інструкцію і кешувати
-контекст на боці провайдера; групувати кілька запитів в один виклик; скоротити
-приклад у промпті. Жодне не зроблено: на 18 рядках це передчасна оптимізація, а
-без еталону неможливо перевірити, що скорочення промпту не зіпсувало вивід.
+### Classification quality is not measured
 
-### Приватність
+The main limitation. There is no hand-labelled reference set, so it is unknown
+in what share of cases `category` and `priority` match what a person would
+choose. All that can be claimed is that the output is valid, internally
+consistent and backed by quotes from the source. That is not the same as
+correct.
 
-Тексти запитів ідуть у зовнішній API. У цьому датасеті персональних даних
-немає, у справжньому інбоксі будуть (імена, суми, контрагенти). Потрібен або
-маскувальний шар, або модель у власному контурі. Не зроблено.
+What the run in `examples/` shows: over 18 rows nothing ended up `failed`, four
+answers needed repairing and went through on the second or third attempt, and
+the REQ-013 duplicate was found. The rules caught six places where the output
+diverged from the text: three departments filled in where the text names none,
+plus a request queued with no action, a `non_actionable` item with a list of
+actions, and `needs_clarification` with no question for the author. But that is
+one run on one model, not a measurement.
+
+How to close it: label 100-150 requests by hand, compute accuracy per field and
+a confusion matrix over the categories. Without that, any number about
+"accuracy" would be invented.
+
+### Non-determinism
+
+`temperature=0` narrows the spread but does **not** guarantee identical output:
+a provider can change the model behind the same name, and a gateway like
+OpenRouter can route the same request to different upstreams.
+
+Done: a response cache keyed by `provider + model + parameters + prompt`. Re-running
+the same input gives the same result and costs no tokens. The model, prompt
+version and temperature are written into `output.json`, so two runs are only
+comparable when those match.
+
+What it does **not** solve: the first run over new input is still
+non-deterministic, and deleting the cache brings the spread back.
+
+### Volume
+
+18 rows is a scale at which everything is easy. What changes at 10,000:
+
+- **Rate limits.** There is a bounded thread pool and backoff on 429, but no
+  queue and no spreading of load over time. A run will hit the provider's RPM.
+- **Memory.** Every record is held in a list and serialised as one file. The
+  right shape is streaming with JSON Lines written as rows complete.
+- **No checkpoints.** A break at row 9,000 means running again from scratch. The
+  cache softens it, but that is a side effect and not a recovery mechanism.
+- **Duplicates.** The pass sends the whole set in one prompt. At 10,000 requests
+  that will not fit in context. The right shape is candidate selection first, by
+  embeddings or by overlap in `mentioned_systems`, and only then an LLM over
+  dozens of pairs.
+
+### Token cost
+
+Counted and reported in `report.md` and `output.json` (`run.token_usage`).
+From the run in `examples/`: 18 requests, 24 calls (18 extractions, 5 repair
+attempts and the duplicate pass), 30,821 tokens of which 27,483 are input. So
+the main cost is the instructions repeated on every request.
+
+How to bring that down at scale: move the rules into the system instruction and
+use provider-side context caching; batch several requests into one call; shorten
+the example in the prompt. None of it is done: at 18 rows it is premature, and
+without a reference set there is no way to verify that a shorter prompt did not
+make the output worse.
+
+### Privacy
+
+Request texts go to an external API. This dataset has no personal data; a real
+inbox will have it (names, amounts, counterparties). That needs either a masking
+layer or a model inside your own perimeter. Not done.
 
 ### Async
 
-Обробка паралельна через пул потоків, а не `asyncio`. Задача IO-bound, і на
-цьому масштабі пул дає ту саму пропускну здатність за меншої складності;
-`asyncio` виправданий на тисячах одночасних зʼєднань, яких тут немає.
+Processing is parallel through a thread pool rather than `asyncio`. The work is
+IO-bound, and at this scale a pool gives the same throughput for less
+complexity; `asyncio` earns its keep at thousands of concurrent connections,
+which are not here.
 
 ---
 
-## Що зробив би далі
+## What I would do next
 
-1. **Еталон на 100-150 розмічених запитів** і заміри accuracy по полях. Без
-   цього решта робиться наосліп, включно з підбором промпту.
-2. **Потокова обробка** з JSON Lines і чекпойнтами.
-3. **Дедуплікація через ембединги**, з LLM лише на фінальному звірянні пар.
-4. **Google Sheets.** Не зроблено: потребує service account, окремого файлу
-   облікових даних і OAuth-скоупу, а підсумок і так лежить на диску. Точка
-   розширення - протокол `Sink` у `delivery.py`: реалізація для Sheets будує
-   рядки з агрегатів і дописує їх у лист, як це робить `TelegramSink`.
-5. **Веб-хук замість CSV**: у справжньому житті запити прилітають по одному, а
-   батч-обробка файлу тут лише зручна форма для тестового.
-
----
-
+1. **A reference set of 100-150 labelled requests** and accuracy measured per
+   field. Without it everything else, prompt tuning included, is done blind.
+2. **Streaming processing** with JSON Lines and checkpoints.
+3. **Duplicate detection through embeddings**, with the LLM only on the final
+   comparison of candidate pairs.
+4. **Google Sheets.** Not done: it needs a service account, a separate
+   credentials file and an OAuth scope, and the summary is already on disk. The
+   extension point is the `Sink` protocol in `delivery.py`: a Sheets
+   implementation builds rows from the aggregates and appends them to a
+   worksheet, the way `TelegramSink` posts a digest.
+5. **A webhook instead of a CSV.** In real life requests arrive one at a time,
+   and batch processing a file is just a convenient shape for a test task.
