@@ -16,3 +16,6 @@ output/*.md
 # The task statement itself and the original export live outside the repo.
 *.pdf
 /input_requests.csv
+.coverage
+htmlcov/
+coverage.xml

@@ -50,15 +50,27 @@ def _sort_key(record: TriageRecord, index: int) -> tuple[float, int]:
     return (float("inf"), index)
 
 
+MAX_TEXT_IN_BLOCK = 400
+
+
 def build_summary_block(records: list[TriageRecord]) -> str:
+    """One line per request, with the original text alongside the summary.
+
+    The summary alone is not enough, and the supplied dataset shows why: what
+    makes REQ-013 a duplicate is the phrase about the same report someone else
+    asked for on Monday, and a one-sentence summary drops exactly that. The
+    first live run found no duplicates at all for this reason.
+    """
     lines: list[str] = []
     for record in records:
         if record.status is not RecordStatus.OK or record.extraction is None:
             continue
         systems = ", ".join(record.extraction.mentioned_systems) or "-"
+        text = " ".join(record.raw_text.split())[:MAX_TEXT_IN_BLOCK]
         lines.append(
-            f"{record.id} | {record.timestamp} | {record.extraction.short_summary} "
-            f"| системи: {systems}"
+            f"{record.id} | {record.timestamp} | системи: {systems}\n"
+            f"  суть: {record.extraction.short_summary}\n"
+            f"  текст: {text}"
         )
     return "\n".join(lines)
 
