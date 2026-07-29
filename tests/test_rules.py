@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from inbox_triage import rules
-from inbox_triage.models import Category, Language, Priority, RequestExtraction, WorkItemType
+from inbox_triage.models import Category, Priority, RequestExtraction, WorkItemType
 
 
 def make_extraction(**overrides: Any) -> RequestExtraction:
@@ -17,8 +17,6 @@ def make_extraction(**overrides: Any) -> RequestExtraction:
         "requested_actions": ["зробити щось конкретне"],
         "needs_clarification": False,
         "work_item_type": WorkItemType.PROJECT,
-        "is_recurring": False,
-        "language": Language.UK,
         "mentioned_systems": [],
         "urgency_signals": [],
     }

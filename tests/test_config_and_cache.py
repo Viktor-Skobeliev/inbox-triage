@@ -163,6 +163,25 @@ class TestCache:
         assert second.cached is True
         assert second.usage.total == 0
 
+    def test_concurrent_writers_do_not_corrupt_entries(self, tmp_path: Path) -> None:
+        # --concurrency puts several threads on the same cache directory, so
+        # entries are written through a temporary file and renamed.
+        from concurrent.futures import ThreadPoolExecutor
+
+        inner = FakeLLMClient(lambda p: valid_json(short_summary=f"суть {len(p)}"))
+        cached = CachingClient(inner, tmp_path / "c", fingerprint="fp")
+        prompts = [f"запит номер {i}" for i in range(24)]
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(lambda p: cached.generate(p), prompts))
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            second = list(pool.map(lambda p: cached.generate(p), prompts))
+
+        assert all(response.text for response in second)
+        assert cached.hits == len(prompts)
+        # No half-written files left behind.
+        assert not list((tmp_path / "c").glob("*.tmp"))
+
     def test_unicode_prompts_round_trip(self, tmp_path: Path) -> None:
         inner = FakeLLMClient(lambda _: valid_json(short_summary="Суть із апострофом: обʼєкт."))
         cached = CachingClient(inner, tmp_path / "c", fingerprint="fp")

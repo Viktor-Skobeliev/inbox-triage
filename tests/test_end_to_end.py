@@ -199,6 +199,61 @@ class TestFailureExitCodes:
         monkeypatch.delenv("LLM_BASE_URL", raising=False)
         assert main(["--input", str(csv_path)]) == 2
 
+    def test_unusable_output_dir_is_caught_before_any_llm_call(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Discovering this after paying for the run is the worst moment.
+        csv_path = tmp_path / "input.csv"
+        csv_path.write_text(CSV_BODY, encoding="utf-8")
+        blocker = tmp_path / "not-a-dir"
+        blocker.write_text("i am a file", encoding="utf-8")
+        monkeypatch.setenv("LLM_API_KEY", "x")
+
+        from inbox_triage import __main__ as entry
+        from inbox_triage.llm.fake import FakeLLMClient
+
+        calls: list[str] = []
+
+        class Counting(FakeLLMClient):
+            def __init__(self, **_: Any) -> None:
+                super().__init__(lambda p: (calls.append(p), valid_json())[1], name="counting")
+
+            def close(self) -> None:
+                return None
+
+        monkeypatch.setattr(entry, "ChatClient", Counting)
+        assert main(["--input", str(csv_path), "--output-dir", str(blocker)]) == 2
+        assert calls == []
+
+    def test_a_fully_failed_run_says_so_at_error_level(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # A dead key and one bad row used to look identical in the log.
+        csv_path = tmp_path / "input.csv"
+        csv_path.write_text(CSV_BODY, encoding="utf-8")
+        monkeypatch.setenv("LLM_API_KEY", "x")
+        monkeypatch.setenv("LLM_CACHE_DIR", "")
+
+        from inbox_triage import __main__ as entry
+        from inbox_triage.llm.base import LLMError
+        from inbox_triage.llm.fake import FakeLLMClient
+
+        class Dead(FakeLLMClient):
+            def __init__(self, **_: Any) -> None:
+                super().__init__([], name="dead")
+
+            def generate(self, prompt: str, *, system: str | None = None) -> Any:
+                raise LLMError("auth rejected (401), check LLM_API_KEY")
+
+            def close(self) -> None:
+                return None
+
+        monkeypatch.setattr(entry, "ChatClient", Dead)
+        with caplog.at_level("ERROR"):
+            code = main(["--input", str(csv_path), "--output-dir", str(tmp_path / "out")])
+        assert code == 1
+        assert any(r.levelname == "ERROR" for r in caplog.records)
+
     def test_failed_row_sets_exit_code_one_but_still_writes_files(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

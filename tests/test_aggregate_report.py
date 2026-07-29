@@ -8,7 +8,6 @@ from inbox_triage.aggregate import UNKNOWN_DEPARTMENT, aggregate
 from inbox_triage.models import (
     Category,
     Department,
-    Language,
     Priority,
     RecordStatus,
     RequestExtraction,
@@ -29,8 +28,6 @@ def extraction(**overrides: Any) -> RequestExtraction:
         "requested_actions": ["зробити"],
         "needs_clarification": False,
         "work_item_type": WorkItemType.PROJECT,
-        "is_recurring": False,
-        "language": Language.UK,
         "mentioned_systems": [],
         "urgency_signals": [],
     }
@@ -55,6 +52,8 @@ def metadata() -> RunMetadata:
     return RunMetadata(
         started_at="2026-07-29T10:00:00+00:00",
         finished_at="2026-07-29T10:01:00+00:00",
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
         model="gemini-2.5-flash",
         temperature=0.0,
         prompt_version="v1",

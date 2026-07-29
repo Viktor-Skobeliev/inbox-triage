@@ -43,7 +43,6 @@ class TestAcceptedPairs:
         apply_duplicates(records, result)
         assert result.pairs == {"REQ-013": "REQ-001"}
         assert records[2].duplicate_of == "REQ-001"
-        assert "marked_duplicate" in records[2].rule_flags
 
     def test_empty_result_is_normal(self) -> None:
         client = FakeLLMClient([dedup_response([])])

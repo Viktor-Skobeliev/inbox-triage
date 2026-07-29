@@ -1,9 +1,8 @@
-"""Regression tests.
+"""Edge cases: what happens when the provider, the data or the operator
+misbehave.
 
-One test per defect found during review. Each one failed before the fix that
-sits next to it in the history, and the comment says what went wrong, because a
-test whose reason is forgotten gets deleted the first time it becomes
-inconvenient.
+The dataset rows are quoted verbatim, so a failure here reproduces on the same
+input a reviewer would run.
 """
 
 from __future__ import annotations
@@ -25,7 +24,6 @@ from inbox_triage.models import (
     Category,
     Department,
     InboxRow,
-    Language,
     Priority,
     RecordStatus,
     RequestExtraction,
@@ -56,8 +54,6 @@ def extraction(**overrides: Any) -> RequestExtraction:
         "requested_actions": ["зробити"],
         "needs_clarification": False,
         "work_item_type": WorkItemType.PROJECT,
-        "is_recurring": False,
-        "language": Language.UK,
         "mentioned_systems": [],
         "urgency_signals": [],
         "clarification_questions": [],
@@ -77,6 +73,28 @@ def record(request_id: str, **overrides: Any) -> TriageRecord:
     }
     base.update(overrides)
     return TriageRecord.model_validate(base)
+
+
+def _metadata() -> Any:
+    from inbox_triage.models import RunMetadata, TokenUsage
+
+    return RunMetadata(
+        started_at="2026-07-29T10:00:00+00:00",
+        finished_at="2026-07-29T10:01:00+00:00",
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        model="test/model",
+        temperature=0.0,
+        prompt_version="v1",
+        max_attempts=3,
+        total_requests=2,
+        succeeded=2,
+        failed=0,
+        retried=0,
+        cache_hits=0,
+        llm_calls=2,
+        token_usage=TokenUsage(),
+    )
 
 
 def build_client(handler: Any, **kwargs: Any) -> ChatClient:
@@ -445,6 +463,20 @@ class TestInputEncoding:
         with pytest.raises(InputError):
             load_requests(path)
 
+    def test_directory_instead_of_a_file(self, tmp_path: Path) -> None:
+        # Easy to do with tab completion, and it used to raise PermissionError.
+        with pytest.raises(InputError, match="directory"):
+            load_requests(tmp_path)
+
+    def test_utf16_export_is_read(self, tmp_path: Path) -> None:
+        # Excel writes this when you choose "Unicode Text", and so does
+        # PowerShell redirection. Decoded as cp1251 it became mojibake and the
+        # error message blamed the columns.
+        path = tmp_path / "input.csv"
+        body = "id,channel,timestamp,raw_text\nREQ-001,Slack,2026-06-08 09:14,Треба звіт\n"
+        path.write_bytes(body.encode("utf-16"))
+        assert load_requests(path).rows[0].raw_text == "Треба звіт"
+
     def test_semicolon_export_hints_at_the_real_cause(self, tmp_path: Path) -> None:
         path = tmp_path / "input.csv"
         path.write_text("id;channel;timestamp;raw_text\nREQ-001;Slack;;текст\n", encoding="utf-8")
@@ -473,6 +505,8 @@ class TestOutputContract:
             run=RunMetadata(
                 started_at="a",
                 finished_at="b",
+                provider="openrouter",
+                base_url="https://example.test/v1",
                 model="m",
                 temperature=0.0,
                 prompt_version="v1",
@@ -494,6 +528,153 @@ class TestOutputContract:
         data, notes = normalise_payload({**json.loads(valid_json()), "confidence": 0.91})
         assert RequestExtraction.model_validate(data)
         assert any("confidence" in note for note in notes)
+
+
+class TestSecretsNeverLeaveTheClient:
+    """A provider that echoes the submitted key back in an error message would
+    otherwise write it into output.json, which is a committed artefact.
+    """
+
+    def test_key_echoed_in_an_error_body_is_redacted(self) -> None:
+        leaked = "sk-or-v1-abcdef0123456789abcdef0123456789"
+        handler = lambda _: httpx.Response(  # noqa: E731
+            400, json={"error": {"message": f"Incorrect API key provided: {leaked}"}}
+        )
+        with pytest.raises(LLMError) as caught:
+            build_client(handler).generate("привіт")
+        assert leaked not in str(caught.value)
+        assert "[REDACTED]" in str(caught.value)
+
+    def test_auth_failure_does_not_quote_the_provider_at_all(self) -> None:
+        leaked = "sk-or-v1-abcdef0123456789abcdef0123456789"
+        handler = lambda _: httpx.Response(  # noqa: E731
+            401, json={"error": {"message": f"bad key {leaked}"}}
+        )
+        with pytest.raises(LLMError) as caught:
+            build_client(handler).generate("привіт")
+        assert leaked not in str(caught.value)
+        assert "LLM_API_KEY" in str(caught.value)
+
+    def test_error_body_as_a_list_does_not_crash_the_retry_path(self) -> None:
+        # A gateway answering 429 with a bare list used to raise AttributeError
+        # out of the error formatter, losing the row instead of retrying it.
+        calls: list[int] = []
+
+        def handler(_: httpx.Request) -> httpx.Response:
+            calls.append(1)
+            if len(calls) < 2:
+                return httpx.Response(429, json=[{"message": "rate limited"}])
+            return httpx.Response(
+                200,
+                json={"choices": [{"message": {"content": '{"a": 1}'}, "finish_reason": "stop"}]},
+            )
+
+        assert build_client(handler).generate("привіт").text == '{"a": 1}'
+        assert len(calls) == 2
+
+
+class TestDuplicatePassCannotSinkTheRun:
+    """It runs after every row has been paid for, so this is the most expensive
+    place in the pipeline to raise.
+    """
+
+    def test_unexpected_exception_is_contained(self) -> None:
+        from inbox_triage.dedup import find_duplicates
+
+        class Erratic(FakeLLMClient):
+            def generate(self, prompt: str, *, system: str | None = None) -> Any:
+                if "дублікат" in prompt.lower() or "duplicates" in prompt:
+                    raise RuntimeError("gateway did something new")
+                return super().generate(prompt, system=system)
+
+        records = [record("REQ-001"), record("REQ-002")]
+        result = find_duplicates(Erratic(lambda _: valid_json()), records)
+        assert result.pairs == {}
+        assert result.error is not None
+        assert "RuntimeError" in result.error
+
+    def test_unreadable_timestamp_does_not_silently_disable_dedup(self) -> None:
+        # inf sorted an unparsed date as the newest record, so a correct pair
+        # was rejected with a reason that was not true.
+        from inbox_triage.dedup import find_duplicates
+
+        records = [
+            record("REQ-001", timestamp="08.06.2026 09:14"),
+            record("REQ-013", timestamp="08.06.2026 16:02"),
+        ]
+        client = FakeLLMClient(
+            [json.dumps({"duplicates": [{"id": "REQ-013", "duplicate_of": "REQ-001"}]})]
+        )
+        result = find_duplicates(client, records)
+        assert result.pairs == {"REQ-013": "REQ-001"}
+
+    def test_unknown_format_falls_back_to_file_order(self) -> None:
+        from inbox_triage.dedup import find_duplicates
+
+        records = [
+            record("REQ-001", timestamp="понеділок вранці"),
+            record("REQ-013", timestamp="хтозна"),
+        ]
+        client = FakeLLMClient(
+            [json.dumps({"duplicates": [{"id": "REQ-013", "duplicate_of": "REQ-001"}]})]
+        )
+        assert find_duplicates(client, records).pairs == {"REQ-013": "REQ-001"}
+
+
+class TestDepartmentContradiction:
+    def test_named_department_overruled_by_the_model_is_flagged(self) -> None:
+        # REQ-003 says "у відділі продажів" outright.
+        text = "У відділі продажів накопичується багато транскриптів дзвінків з клієнтами."
+        _, flags = rules.apply_rules(extraction(target_department=Department.HR), text)
+        assert rules.FLAG_DEPARTMENT_CONTRADICTS in flags
+
+    def test_matching_department_is_not_flagged(self) -> None:
+        text = "У відділі продажів накопичується багато транскриптів дзвінків з клієнтами."
+        _, flags = rules.apply_rules(extraction(target_department=Department.SALES), text)
+        assert rules.FLAG_DEPARTMENT_CONTRADICTS not in flags
+
+
+class TestSchemaBounds:
+    def test_a_runaway_summary_is_a_validation_error_not_a_huge_file(self) -> None:
+        with pytest.raises(Exception) as caught:
+            extraction(short_summary="а" * 10000)
+        assert "at most 400" in str(caught.value)
+
+    def test_a_runaway_list_is_rejected(self) -> None:
+        with pytest.raises(Exception) as caught:
+            extraction(requested_actions=[f"дія {i}" for i in range(50)])
+        assert "at most 20" in str(caught.value)
+
+
+class TestAnswerObjectWins:
+    def test_a_valid_json_preamble_does_not_beat_the_real_answer(self) -> None:
+        # A chatty preamble that happens to be valid JSON used to win, costing
+        # a full repair round.
+        text = 'Ось результат аналізу:\n{"note": "ok"}\n\n' + valid_json()
+        assert extract_json_object(text)["category"] == "автоматизація"
+
+    def test_an_object_without_schema_fields_is_still_returned(self) -> None:
+        assert extract_json_object('{"note": "ok"}') == {"note": "ok"}
+
+
+class TestReportCellsAreSafe:
+    def test_a_pipe_in_the_input_channel_cannot_split_the_row(self) -> None:
+        from inbox_triage.report import _record_list
+
+        rows = _record_list([record("REQ-001", channel="Slack | #ops")])
+        assert "Slack \\| #ops" in rows[2]
+
+    def test_work_queue_lists_the_actionable_requests(self) -> None:
+        from inbox_triage.report import render_report
+
+        records = [
+            record("REQ-005", extraction=extraction(priority=Priority.HIGH)),
+            record("REQ-001"),
+        ]
+        text = render_report(aggregate(records), _metadata())
+        assert "Черга робіт" in text
+        assert "REQ-005" in text
+        assert "REQ-001" in text
 
 
 class TestBuildRecordIsDefensive:

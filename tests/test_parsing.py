@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from inbox_triage.models import Category, Department, Language, Priority, WorkItemType
+from inbox_triage.models import Category, Department, Priority, WorkItemType
 from inbox_triage.parsing import ParseError, extract_json_object, normalise_payload
 
 
@@ -54,9 +54,7 @@ class TestNormalisePayload:
             "priority": "high",
             "target_department": "маркетинг",
             "work_item_type": "project",
-            "language": "uk",
             "needs_clarification": False,
-            "is_recurring": True,
             "requested_actions": ["зробити"],
             "mentioned_systems": [],
             "urgency_signals": [],
@@ -82,10 +80,9 @@ class TestNormalisePayload:
         assert data["target_department"] is None
 
     def test_string_booleans(self) -> None:
-        data, notes = normalise_payload({"needs_clarification": "true", "is_recurring": "ні"})
+        data, notes = normalise_payload({"needs_clarification": "true"})
         assert data["needs_clarification"] is True
-        assert data["is_recurring"] is False
-        assert len(notes) == 2
+        assert any("needs_clarification" in note for note in notes)
 
     def test_bare_string_becomes_a_list(self) -> None:
         data, notes = normalise_payload({"requested_actions": "зробити бота"})
@@ -118,7 +115,6 @@ class TestNormalisePayload:
         assert data["mentioned_systems"] == []
         assert data["urgency_signals"] == []
 
-    def test_language_and_work_item_aliases(self) -> None:
-        data, _ = normalise_payload({"language": "English", "work_item_type": "Інцидент"})
-        assert data["language"] is Language.EN
+    def test_work_item_aliases(self) -> None:
+        data, _ = normalise_payload({"work_item_type": "Інцидент"})
         assert data["work_item_type"] is WorkItemType.INCIDENT
