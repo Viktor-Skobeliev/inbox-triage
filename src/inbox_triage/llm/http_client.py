@@ -16,6 +16,7 @@ JSON from plain text anyway.
 from __future__ import annotations
 
 import random
+import re
 import time
 from typing import Any
 
@@ -166,7 +167,12 @@ class ChatClient:
                     continue
 
                 if response.status_code in {401, 403}:
-                    raise LLMError(f"{self.name}: auth rejected ({response.status_code}). {detail}")
+                    # No provider detail here: it is the message most likely to
+                    # contain the key itself, and this text ends up in the
+                    # output file.
+                    raise LLMError(
+                        f"{self.name}: auth rejected ({response.status_code}), check LLM_API_KEY"
+                    )
                 if response.status_code == 404:
                     raise LLMError(
                         f"{self.name}: model or endpoint not found (404). "
@@ -241,14 +247,28 @@ def _as_int(value: Any) -> int:
         return 0
 
 
+# Providers echo the submitted key back in some error messages. Anything that
+# reaches an error string can end up in output.json, so it is redacted here.
+SECRET_PATTERN = re.compile(r"(sk-[A-Za-z0-9_\-]{8,}|AIza[A-Za-z0-9_\-]{20,}|Bearer\s+\S+)")
+
+
+def redact(text: str) -> str:
+    return SECRET_PATTERN.sub("[REDACTED]", text)
+
+
 def _error_detail(response: httpx.Response) -> str:
     try:
         body = response.json()
     except ValueError:
-        return response.text[:300]
+        return redact(response.text[:300])
+
+    if not isinstance(body, dict):
+        # Gateways and proxies do return a bare list here.
+        return redact(str(body)[:300])
+
     error = body.get("error")
     if isinstance(error, dict):
-        return str(error.get("message") or error)[:300]
+        return redact(str(error.get("message") or error)[:300])
     if isinstance(error, str):
-        return error[:300]
-    return str(body)[:300]
+        return redact(error[:300])
+    return redact(str(body)[:300])
