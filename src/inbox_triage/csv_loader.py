@@ -19,7 +19,7 @@ REQUIRED_COLUMNS = {"id", "raw_text"}
 # utf-8 first, then what Excel writes on a Ukrainian Windows when you pick
 # "Save as CSV". The task says the data is as in real life, and that is what
 # real life hands you.
-ENCODINGS = ("utf-8-sig", "cp1251")
+ENCODINGS = ("utf-8-sig", "utf-16", "cp1251")
 
 
 class InputError(Exception):
@@ -42,6 +42,12 @@ def _read_text(path: Path) -> str:
             return path.read_text(encoding=encoding)
         except UnicodeDecodeError:
             continue
+        except OSError as exc:
+            # Most often the file is open in Excel, which is exactly the kind of
+            # thing that happens to whoever runs this.
+            raise InputError(
+                f"cannot read {path}: {exc}. Close it if it is open elsewhere."
+            ) from exc
     raise InputError(
         f"cannot decode {path}: tried {', '.join(ENCODINGS)}. Re-save the file as UTF-8."
     )
@@ -50,6 +56,8 @@ def _read_text(path: Path) -> str:
 def load_requests(path: Path) -> LoadResult:
     if not path.exists():
         raise InputError(f"input file not found: {path}")
+    if not path.is_file():
+        raise InputError(f"{path} is a directory, not a file")
 
     reader = csv.DictReader(io.StringIO(_read_text(path), newline=""))
     if reader.fieldnames is None:

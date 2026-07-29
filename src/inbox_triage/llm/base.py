@@ -11,6 +11,8 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import json
+import os
+import tempfile
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -76,12 +78,19 @@ class CachingClient:
                     self.hits += 1
                 return LLMResponse(text=payload["text"], usage=TokenUsage(), cached=True)
             except (OSError, ValueError, KeyError):
-                path.unlink(missing_ok=True)
+                # Unreadable entry: go to the network. Deleting it is not worth
+                # the trouble, and on Windows unlinking a file another process
+                # holds raises instead.
+                pass
 
         response = self._inner.generate(prompt, system=system)
-        # A cache that cannot be written is not a reason to fail the run.
+        # Written through a temporary file: --concurrency and a second terminal
+        # both put several writers on the same directory, and a half-written
+        # entry would be read back as a corrupt one. A cache that cannot be
+        # written is not a reason to fail the run.
         with contextlib.suppress(OSError):
-            path.write_text(
-                json.dumps({"text": response.text}, ensure_ascii=False), encoding="utf-8"
-            )
+            handle, tmp_name = tempfile.mkstemp(dir=self._dir, suffix=".tmp")
+            with os.fdopen(handle, "w", encoding="utf-8") as tmp:
+                json.dump({"text": response.text}, tmp, ensure_ascii=False)
+            os.replace(tmp_name, path)
         return response
