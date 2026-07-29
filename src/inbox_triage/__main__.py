@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 import sys
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -63,8 +64,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--telegram", action="store_true", help="send a digest (needs TELEGRAM_* in .env)"
     )
-    parser.add_argument("--verbose", action="store_true", help="debug logging")
-    parser.add_argument("--quiet", action="store_true", help="errors only")
+    noise = parser.add_mutually_exclusive_group()
+    noise.add_argument("--verbose", action="store_true", help="debug logging")
+    noise.add_argument("--quiet", action="store_true", help="errors only")
     return parser
 
 
@@ -72,8 +74,9 @@ def configure_logging(*, verbose: bool, quiet: bool) -> None:
     level = logging.DEBUG if verbose else logging.ERROR if quiet else logging.INFO
     logging.basicConfig(level=level, format="%(message)s", stream=sys.stderr)
     # httpx logs every request at INFO, which buries the run's own output in a
-    # wall of identical POST lines.
-    logging.getLogger("httpx").setLevel(logging.WARNING if not verbose else logging.INFO)
+    # wall of identical POST lines. It is also kept quiet under --verbose: the
+    # Telegram URL carries the bot token, and httpx logs full URLs.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def write_atomic(path: Path, content: str) -> None:
@@ -115,6 +118,17 @@ def main(argv: list[str] | None = None) -> int:
     log.info("loaded %d request(s) from %s", len(rows), args.input)
     for line_no, reason in loaded.skipped:
         log.info("  skipped line %d: %s", line_no, reason)
+
+    # Before the first paid call, not after: an unusable output directory is an
+    # input problem, and finding it out once the run is paid for is the worst
+    # possible moment.
+    try:
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        if settings.cache_dir and not args.no_cache:
+            settings.cache_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        log.error("error: cannot use output or cache directory: %s", exc)
+        return 2
 
     if not settings.has_api_key:
         log.error(
@@ -161,12 +175,18 @@ def main(argv: list[str] | None = None) -> int:
         run = triage_rows(client, rows, max_attempts=max_attempts, concurrency=concurrency)
 
         if not args.no_dedup:
-            dedup_result = find_duplicates(client, run.records)
-            apply_duplicates(run.records, dedup_result)
-            if dedup_result.error:
-                log.warning("  %s", dedup_result.error)
-            elif dedup_result.pairs:
-                log.info("  duplicates found: %d", len(dedup_result.pairs))
+            try:
+                dedup_result = find_duplicates(client, run.records)
+                apply_duplicates(run.records, dedup_result)
+            except Exception:
+                # This step runs after every row has been paid for. Whatever
+                # happened, the rows that did parse are still worth writing.
+                log.exception("duplicate pass failed, continuing with what was parsed")
+            else:
+                if dedup_result.error:
+                    log.warning("  %s", dedup_result.error)
+                elif dedup_result.pairs:
+                    log.info("  duplicates found: %d", len(dedup_result.pairs))
     finally:
         chat.close()
 
@@ -180,6 +200,8 @@ def main(argv: list[str] | None = None) -> int:
     metadata = RunMetadata(
         started_at=started_at,
         finished_at=_now(),
+        provider=provider,
+        base_url=base_url,
         model=model,
         temperature=settings.temperature,
         prompt_version=PROMPT_VERSION,
@@ -193,7 +215,6 @@ def main(argv: list[str] | None = None) -> int:
         token_usage=usage,
     )
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
     json_path = args.output_dir / "output.json"
     report_path = args.output_dir / "report.md"
 
@@ -207,6 +228,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.telegram:
         maybe_send_digest(aggregates, metadata)
+
+    if aggregates.failed and aggregates.failed == aggregates.total:
+        # A dead key and one bad row currently look identical in the log, and
+        # under --quiet a fully failed run says nothing at all.
+        reasons = Counter(record.error or "unknown" for record in aggregates.failures)
+        log.error("every request failed. Most common reason: %s", reasons.most_common(1)[0][0])
 
     log.info(
         "done: %d ok, %d failed, %d retried, %d tokens",

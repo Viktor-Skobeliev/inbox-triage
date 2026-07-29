@@ -12,6 +12,7 @@ chains. A model that invents a pair gets it dropped, not written to the output.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -31,23 +32,24 @@ class DedupResult:
     llm_calls: int = 0
 
 
-TIMESTAMP_FORMATS = ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S")
+TIMESTAMP_FORMATS = ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%d.%m.%Y %H:%M")
 
 
-def _sort_key(record: TriageRecord, index: int) -> tuple[float, int]:
-    """Order by timestamp, falling back to position in the file.
-
-    An inbox export stitched together from Slack, Telegram and email does not
-    arrive globally sorted, and `--limit` shifts positions anyway, so which
-    request came first cannot be read off the row number alone.
-    """
-    stamp = (record.timestamp or "").strip()
+def _parse_timestamp(raw: str) -> float | None:
+    """Seconds since the epoch, or None when the format is unknown."""
+    stamp = (raw or "").strip()
+    if not stamp:
+        return None
+    try:
+        return datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        pass
     for fmt in TIMESTAMP_FORMATS:
         try:
-            return (datetime.strptime(stamp, fmt).timestamp(), index)
+            return datetime.strptime(stamp, fmt).timestamp()
         except ValueError:
             continue
-    return (float("inf"), index)
+    return None
 
 
 MAX_TEXT_IN_BLOCK = 400
@@ -61,18 +63,22 @@ def build_summary_block(records: list[TriageRecord]) -> str:
     asked for on Monday, and a one-sentence summary drops exactly that. The
     first live run found no duplicates at all for this reason.
     """
-    lines: list[str] = []
+    items = []
     for record in records:
         if record.status is not RecordStatus.OK or record.extraction is None:
             continue
-        systems = ", ".join(record.extraction.mentioned_systems) or "-"
-        text = " ".join(record.raw_text.split())[:MAX_TEXT_IN_BLOCK]
-        lines.append(
-            f"{record.id} | {record.timestamp} | системи: {systems}\n"
-            f"  суть: {record.extraction.short_summary}\n"
-            f"  текст: {text}"
+        items.append(
+            {
+                "id": record.id,
+                "timestamp": record.timestamp,
+                "systems": record.extraction.mentioned_systems,
+                "summary": record.extraction.short_summary,
+                "text": " ".join(record.raw_text.split())[:MAX_TEXT_IN_BLOCK],
+            }
         )
-    return "\n".join(lines)
+    # Serialised, not interpolated: this prompt carries user text too, and it
+    # was the one input still going in raw.
+    return json.dumps(items, ensure_ascii=False, indent=1)
 
 
 def find_duplicates(client: LLMClient, records: list[TriageRecord]) -> DedupResult:
@@ -89,6 +95,11 @@ def find_duplicates(client: LLMClient, records: list[TriageRecord]) -> DedupResu
     except LLMError as exc:
         result.error = f"duplicate pass skipped: {exc}"
         return result
+    except Exception as exc:
+        # This runs after every row has been paid for. Losing the whole run
+        # here costs more than anywhere else in the pipeline.
+        result.error = f"duplicate pass skipped: {type(exc).__name__}: {exc}"
+        return result
 
     result.llm_calls = 1
     result.usage.add(response.usage)
@@ -104,7 +115,8 @@ def find_duplicates(client: LLMClient, records: list[TriageRecord]) -> DedupResu
         result.error = "duplicate pass returned no 'duplicates' list"
         return result
 
-    order = {record.id: _sort_key(record, index) for index, record in enumerate(eligible)}
+    position = {record.id: index for index, record in enumerate(eligible)}
+    moment = {record.id: _parse_timestamp(record.timestamp) for record in eligible}
     accepted: dict[str, str] = {}
 
     for item in raw_pairs:
@@ -115,15 +127,23 @@ def find_duplicates(client: LLMClient, records: list[TriageRecord]) -> DedupResu
         earlier = str(item.get("duplicate_of", "")).strip()
         reason = str(item.get("reason", "")).strip()
 
-        if later not in order or earlier not in order:
+        if later not in position or earlier not in position:
             result.rejected.append(f"unknown id in pair {later or '?'} -> {earlier or '?'}")
             continue
         if later == earlier:
             result.rejected.append(f"self-reference on {later}")
             continue
-        if order[earlier] > order[later]:
-            # The original has to be the older message, otherwise the pair is
-            # backwards and would point work at the wrong request.
+
+        # The original has to be the older message, otherwise the pair points
+        # work at the wrong request. Compare timestamps when both parsed, and
+        # fall back to position in the file when either did not: an unreadable
+        # date is not evidence that the pair is backwards.
+        earlier_at, later_at = moment[earlier], moment[later]
+        if earlier_at is not None and later_at is not None:
+            out_of_order = earlier_at > later_at
+        else:
+            out_of_order = position[earlier] > position[later]
+        if out_of_order:
             result.rejected.append(f"{later} -> {earlier} points at a later request")
             continue
         if later in accepted:
@@ -151,5 +171,6 @@ def apply_duplicates(records: list[TriageRecord], result: DedupResult) -> None:
     for record in records:
         target = result.pairs.get(record.id)
         if target:
+            # Not added to rule_flags: duplicate_of is a field of its own, and
+            # the flags table is about the model contradicting the text.
             record.duplicate_of = target
-            record.rule_flags.append("marked_duplicate")
