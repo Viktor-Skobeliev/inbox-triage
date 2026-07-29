@@ -230,10 +230,15 @@ def main(argv: list[str] | None = None) -> int:
         maybe_send_digest(aggregates, metadata)
 
     if aggregates.failed and aggregates.failed == aggregates.total:
-        # A dead key and one bad row currently look identical in the log, and
-        # under --quiet a fully failed run says nothing at all.
+        # A dead key and one bad row used to look identical in the log, and
+        # under --quiet a fully failed run said nothing at all.
         reasons = Counter(record.error or "unknown" for record in aggregates.failures)
-        log.error("every request failed. Most common reason: %s", reasons.most_common(1)[0][0])
+        top_reason = reasons.most_common(1)[0][0]
+        log.error("every request failed. Most common reason: %s", top_reason)
+        if "auth rejected" in top_reason:
+            # A rejected key is a configuration problem, same class as a
+            # missing one, so it gets the same exit code.
+            return 2
 
     log.info(
         "done: %d ok, %d failed, %d retried, %d tokens",

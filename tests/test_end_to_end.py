@@ -43,7 +43,6 @@ def scripted(prompt: str) -> str:
             requested_actions=[],
             needs_clarification=True,
             work_item_type="project",
-            is_recurring=False,
             target_department=None,
         )
     if "REQ-005" in prompt:
@@ -54,7 +53,6 @@ def scripted(prompt: str) -> str:
             short_summary="Разова термінова вивантаження контрагентів.",
             requested_actions=["Вивантажити список контрагентів"],
             work_item_type="one_off",
-            is_recurring=False,
             urgency_signals=["ГОРИТЬ", "терміново"],
         )
     return valid_json()
@@ -251,7 +249,10 @@ class TestFailureExitCodes:
         monkeypatch.setattr(entry, "ChatClient", Dead)
         with caplog.at_level("ERROR"):
             code = main(["--input", str(csv_path), "--output-dir", str(tmp_path / "out")])
-        assert code == 1
+        # A rejected key is a configuration problem, same class as a missing
+        # one, so it gets the same exit code as a missing key rather than the
+        # code that means "some rows did not parse".
+        assert code == 2
         assert any(r.levelname == "ERROR" for r in caplog.records)
 
     def test_failed_row_sets_exit_code_one_but_still_writes_files(

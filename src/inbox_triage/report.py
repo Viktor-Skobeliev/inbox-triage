@@ -178,15 +178,15 @@ def render_report(
         lines += ["### Пропущені рядки вхідного файлу", ""]
         lines += ["| Рядок | Причина |", "|---|---|"]
         for line_no, reason in skipped_rows:
-            lines.append(f"| {line_no} | {reason} |")
+            lines.append(f"| {line_no} | {_cell(reason)} |")
         lines.append("")
 
     if dedup and (dedup.error or dedup.rejected):
         lines += ["### Нотатки проходу по дублікатах", ""]
         if dedup.error:
-            lines += [f"- {dedup.error}"]
+            lines += [f"- {_cell(dedup.error)}"]
         for note in dedup.rejected:
-            lines += [f"- відхилено: {note}"]
+            lines += [f"- відхилено: {_cell(note)}"]
         lines.append("")
 
     lines += [

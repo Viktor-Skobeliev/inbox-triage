@@ -94,6 +94,7 @@ class ChatClient:
         self._max_output_tokens = max_output_tokens
         self._json_mode = json_mode
         self._sleep = sleep
+        self._api_key = api_key
         self.name = f"{base_url.split('//')[-1].split('/')[0]}:{model}"
 
         headers = {
@@ -155,7 +156,7 @@ class ChatClient:
                 if response.status_code == 200:
                     return self._read(response)
 
-                detail = _error_detail(response)
+                detail = self._safe(_error_detail(response))
 
                 # Some models behind a gateway reject JSON mode. Drop it for
                 # the whole run rather than for this call, otherwise every row
@@ -191,6 +192,16 @@ class ChatClient:
             f"{self.name}: giving up after {MAX_TRANSPORT_ATTEMPTS} attempts. {last_error}"
         )
 
+    def _safe(self, text: str) -> str:
+        """Strip the configured key first, then anything that looks like a key.
+
+        The pattern alone is not enough: groq keys start with gsk_ and together
+        keys are bare hex, so neither matches. The client knows its own key, and
+        that is the one that can actually leak.
+        """
+        cleaned = text.replace(self._api_key, "[REDACTED]") if self._api_key else text
+        return redact(cleaned)
+
     def _read(self, response: httpx.Response) -> LLMResponse:
         """Read a 200 response defensively.
 
@@ -207,11 +218,13 @@ class ChatClient:
             raise LLMError(f"{self.name}: response body is {type(body).__name__}, expected object")
 
         # OpenRouter can answer 200 with an error object instead of choices.
+        # This body comes from the provider, so it goes through redaction like
+        # every other error text: it ends up in output.json.
         error = body.get("error")
         if isinstance(error, dict):
-            raise LLMError(f"{self.name}: {error.get('message', error)}")
+            raise LLMError(self._safe(f"{self.name}: {error.get('message', error)}"))
         if isinstance(error, str) and error:
-            raise LLMError(f"{self.name}: {error}")
+            raise LLMError(self._safe(f"{self.name}: {error}"))
 
         choices = body.get("choices")
         if not isinstance(choices, list) or not choices:

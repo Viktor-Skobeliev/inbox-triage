@@ -468,6 +468,19 @@ class TestInputEncoding:
         with pytest.raises(InputError, match="directory"):
             load_requests(tmp_path)
 
+    @pytest.mark.parametrize("padding", ["", "!", "!!", "!!!"])
+    def test_cp1251_is_read_whatever_the_byte_count(self, tmp_path: Path, padding: str) -> None:
+        # The utf-16 codec raises UnicodeError, not UnicodeDecodeError, when a
+        # stream has no BOM, and only on an even byte count. Catching the
+        # subclass let half of all cp1251 files escape as a raw traceback, and
+        # the original fixture passed purely because its length was odd.
+        path = tmp_path / "input.csv"
+        body = (
+            f'id,channel,timestamp,raw_text\nREQ-001,Slack,2026-06-08 09:14,"Треба звіт{padding}"\n'
+        )
+        path.write_bytes(body.encode("cp1251"))
+        assert load_requests(path).rows[0].raw_text.startswith("Треба звіт")
+
     def test_utf16_export_is_read(self, tmp_path: Path) -> None:
         # Excel writes this when you choose "Unicode Text", and so does
         # PowerShell redirection. Decoded as cp1251 it became mojibake and the
@@ -554,6 +567,34 @@ class TestSecretsNeverLeaveTheClient:
             build_client(handler).generate("привіт")
         assert leaked not in str(caught.value)
         assert "LLM_API_KEY" in str(caught.value)
+
+    def test_key_in_a_200_error_body_is_redacted(self) -> None:
+        # A provider can answer 200 with an error object instead of choices,
+        # and that text travels into record.error and then into output.json.
+        leaked = "sk-or-v1-abcdef0123456789abcdef0123456789"
+        handler = lambda _: httpx.Response(  # noqa: E731
+            200, json={"error": {"message": f"Invalid API key {leaked} provided"}}
+        )
+        with pytest.raises(LLMError) as caught:
+            build_client(handler).generate("привіт")
+        assert leaked not in str(caught.value)
+
+    def test_a_key_the_pattern_does_not_know_is_still_redacted(self) -> None:
+        # groq keys start with gsk_ and together keys are bare hex: neither
+        # matches the generic pattern, so the client scrubs its own key too.
+        key = "gsk_zzzz1111yyyy2222xxxx3333"
+        client = ChatClient(
+            api_key=key,
+            model="test/model",
+            base_url="https://example.test/v1",
+            transport=httpx.MockTransport(
+                lambda _: httpx.Response(400, json={"error": {"message": f"bad key {key}"}})
+            ),
+            sleep=lambda _: None,
+        )
+        with pytest.raises(LLMError) as caught:
+            client.generate("привіт")
+        assert key not in str(caught.value)
 
     def test_error_body_as_a_list_does_not_crash_the_retry_path(self) -> None:
         # A gateway answering 429 with a bare list used to raise AttributeError

@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from pydantic import ValidationError
 
 from .llm.base import LLMClient, LLMError
+from .llm.http_client import redact
 from .models import (
     InboxRow,
     RecordStatus,
@@ -91,11 +92,12 @@ def extract_one(client: LLMClient, row: InboxRow, *, max_attempts: int = 3) -> E
             # Anything the client did not translate into LLMError: a gateway
             # returning a shape nobody expected, a bug in this code. It costs
             # one row, not the run, because losing seventeen good rows to one
-            # surprise is the worse outcome.
+            # surprise is the worse outcome. Redacted like every other error
+            # text, since this one also lands in output.json.
             return ExtractionOutcome(
                 extraction=None,
                 attempts=attempt,
-                error=f"unexpected client error: {type(exc).__name__}: {exc}",
+                error=redact(f"unexpected client error: {type(exc).__name__}: {exc}"),
                 raw_response=last_text[:MAX_RAW_RESPONSE_CHARS] or None,
                 notes=notes,
                 usage=usage,

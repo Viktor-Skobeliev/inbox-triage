@@ -40,7 +40,10 @@ def _read_text(path: Path) -> str:
     for encoding in ENCODINGS:
         try:
             return path.read_text(encoding=encoding)
-        except UnicodeDecodeError:
+        # UnicodeError, not UnicodeDecodeError: the utf-16 codec raises the
+        # parent class ("stream does not start with BOM") on a headerless file,
+        # and that escaped the loop for anything with an even byte count.
+        except UnicodeError:
             continue
         except OSError as exc:
             # Most often the file is open in Excel, which is exactly the kind of
