@@ -16,13 +16,22 @@ from .models import RunMetadata, TriageRecord
 _PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
+def _cell(text: str) -> str:
+    """Neutralise markdown in anything that goes into a table cell.
+
+    Applies to input as well as model output: `channel` is a free column of the
+    incoming CSV, and one pipe there splits the row.
+    """
+    return text.replace("|", "\\|").replace("[", "\\[").replace("]", "\\]")
+
+
 def _counter_table(title: str, counter: Counter[str], total: int) -> list[str]:
     if not counter:
         return [f"### {title}", "", "_немає даних_", ""]
     lines = [f"### {title}", "", "| Значення | Запитів | Частка |", "|---|---:|---:|"]
     for key, count in counter.most_common():
         share = f"{(count / total * 100):.0f}%" if total else "-"
-        lines.append(f"| {key} | {count} | {share} |")
+        lines.append(f"| {_cell(key)} | {count} | {share} |")
     lines.append("")
     return lines
 
@@ -48,7 +57,7 @@ def _short(text: str, limit: int = 90) -> str:
     cleaned = " ".join(text.split())
     if len(cleaned) > limit:
         cleaned = cleaned[: limit - 1] + "…"
-    return cleaned.replace("|", "\\|").replace("[", "\\[").replace("]", "\\]")
+    return _cell(cleaned)
 
 
 def _record_list(records: list[TriageRecord]) -> list[str]:
@@ -58,7 +67,40 @@ def _record_list(records: list[TriageRecord]) -> list[str]:
         questions = ""
         if record.extraction and record.extraction.clarification_questions:
             questions = "; ".join(_short(q, 60) for q in record.extraction.clarification_questions)
-        lines.append(f"| {record.id} | {record.channel} | {_short(summary)} | {questions} |")
+        lines.append(
+            f"| {_cell(record.id)} | {_cell(record.channel)} | {_short(summary)} | {questions} |"
+        )
+    lines.append("")
+    return lines
+
+
+def _work_queue(records: list[TriageRecord]) -> list[str]:
+    """The one question the report exists to answer: what to pick up first."""
+    if not records:
+        return ["### Черга робіт", "", "_порожня_", ""]
+
+    ordered = sorted(
+        records,
+        key=lambda r: _PRIORITY_ORDER.get(r.extraction.priority.value, 99) if r.extraction else 99,
+    )
+    lines = [
+        "### Черга робіт",
+        "",
+        "Запити, готові до роботи: не дублікати, не питання, не потребують уточнення.",
+        "",
+        "| ID | Пріоритет | Тип | Суть | Системи |",
+        "|---|---|---|---|---|",
+    ]
+    for record in ordered:
+        extraction = record.extraction
+        if extraction is None:
+            continue
+        systems = ", ".join(extraction.mentioned_systems) or "-"
+        lines.append(
+            f"| {_cell(record.id)} | {extraction.priority.value} | "
+            f"{extraction.work_item_type.value} | {_short(extraction.short_summary, 70)} | "
+            f"{_short(systems, 40)} |"
+        )
     lines.append("")
     return lines
 
@@ -81,11 +123,11 @@ def render_report(
         "",
     ]
 
+    lines += _work_queue(aggregates.actionable)
     lines += _counter_table("За категорією", aggregates.by_category, total)
     lines += _priority_table(aggregates.by_priority, total)
     lines += _counter_table("За відділом", aggregates.by_department, total)
     lines += _counter_table("За типом роботи", aggregates.by_work_item_type, total)
-    lines += _counter_table("За каналом", aggregates.by_channel, aggregates.total)
 
     lines += ["### Потребують уточнення", ""]
     if aggregates.needs_clarification:
@@ -104,7 +146,7 @@ def render_report(
             reason = ""
             if dedup and record.id in dedup.reasons:
                 reason = _short(dedup.reasons[record.id], 70)
-            lines.append(f"| {record.id} | {record.duplicate_of} | {reason} |")
+            lines.append(f"| {_cell(record.id)} | {_cell(record.duplicate_of or '')} | {reason} |")
         lines.append("")
     else:
         lines += ["_не знайдено_", ""]
@@ -113,15 +155,18 @@ def render_report(
         lines += ["### Не вдалося розібрати", ""]
         lines += ["| ID | Спроб | Помилка |", "|---|---:|---|"]
         for record in aggregates.failures:
-            lines.append(f"| {record.id} | {record.attempts} | {_short(record.error or '', 70)} |")
+            lines.append(
+                f"| {_cell(record.id)} | {record.attempts} | {_short(record.error or '', 70)} |"
+            )
         lines.append("")
 
     if aggregates.by_flag:
         lines += [
-            "### Спрацювали правила перевірки",
+            "### Спрацювали перевірки поверх схеми",
             "",
-            "Детерміновані перевірки поверх схеми. Це не помилки обробки, а місця, "
-            "де вивід моделі суперечив тексту запиту або сам собі.",
+            "Нормалізація, повторні спроби і детерміновані правила. Це не помилки "
+            "обробки, а місця, де вивід моделі довелося правити або де він "
+            "розійшовся з текстом запиту.",
             "",
         ]
         lines += ["| Правило | Спрацювань |", "|---|---:|"]
@@ -149,7 +194,7 @@ def render_report(
         "",
         "### Параметри запуску",
         "",
-        f"- модель: `{run.model}`, temperature: `{run.temperature}`",
+        f"- провайдер: `{run.provider}`, модель: `{run.model}`, temperature: `{run.temperature}`",
         f"- версія промпту: `{run.prompt_version}`",
         f"- звернень до моделі: {run.llm_calls} (з кешу: {run.cache_hits})",
         f"- запитів із повторною спробою: {run.retried} із {run.total_requests}",
