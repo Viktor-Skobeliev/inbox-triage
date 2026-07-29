@@ -83,7 +83,10 @@ def _first_key(provider: str) -> str | None:
 def load_settings(env_file: Path | None = None) -> Settings:
     load_dotenv(dotenv_path=env_file, override=False)
     provider = (os.getenv("LLM_PROVIDER") or DEFAULT_PROVIDER).strip().lower()
-    cache_raw = (os.getenv("LLM_CACHE_DIR") or DEFAULT_CACHE_DIR).strip()
+    # An explicitly empty value means "no cache", which is not the same as the
+    # variable being absent. `or` would collapse the two.
+    cache_declared = os.getenv("LLM_CACHE_DIR")
+    cache_raw = (DEFAULT_CACHE_DIR if cache_declared is None else cache_declared).strip()
     return Settings(
         provider=provider,
         api_key=_first_key(provider),
