@@ -110,10 +110,15 @@ ACTIONABLE_TYPES = {WorkItemType.PROJECT, WorkItemType.ONE_OFF, WorkItemType.INC
 
 
 def _fold(text: str) -> str:
-    """Lowercase, strip accents, normalise apostrophes and whitespace."""
-    lowered = unicodedata.normalize("NFKD", text.lower())
-    lowered = "".join(ch for ch in lowered if not unicodedata.combining(ch))
-    lowered = lowered.replace("ʼ", "'").replace("’", "'")
+    """Lowercase, compose, normalise apostrophes and whitespace.
+
+    Composing (NFC) rather than decomposing matters here: stripping combining
+    marks would turn "й" into "и" and "ї" into "і", which are different letters
+    in Ukrainian, and every marker containing them would quietly stop matching.
+    """
+    lowered = unicodedata.normalize("NFC", text.lower())
+    for apostrophe in ("ʼ", "’", "`", "´"):
+        lowered = lowered.replace(apostrophe, "'")
     return re.sub(r"\s+", " ", lowered).strip()
 
 
@@ -207,7 +212,11 @@ def apply_rules(
     # 8. A handful of words cannot be a fully specified request, unless there
     #    is no request at all: "дякую за вчора" is short because it is a
     #    thank-you note, and asking its author to clarify would be absurd.
-    if len(raw_text.strip()) < SHORT_TEXT_CHARS and not data.needs_clarification:
+    if (
+        len(raw_text.strip()) < SHORT_TEXT_CHARS
+        and data.work_item_type is not WorkItemType.NON_ACTIONABLE
+        and not data.needs_clarification
+    ):
         flags.append(FLAG_SHORT_TEXT)
         data.needs_clarification = True
         if FLAG_CLARIFICATION_FORCED not in flags:

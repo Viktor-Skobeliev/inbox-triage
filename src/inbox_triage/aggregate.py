@@ -62,9 +62,15 @@ def aggregate(records: list[TriageRecord]) -> Aggregates:
 
         if extraction.needs_clarification:
             result.needs_clarification.append(record)
+
+        # "Ready to work on" has to mean exactly that: not a duplicate, not a
+        # question, and not something that still needs a reply from its author.
         if record.duplicate_of:
             result.duplicates.append(record)
-        elif extraction.work_item_type.value in ACTIONABLE_TYPES:
+        elif (
+            extraction.work_item_type.value in ACTIONABLE_TYPES
+            and not extraction.needs_clarification
+        ):
             result.actionable.append(record)
 
     return result

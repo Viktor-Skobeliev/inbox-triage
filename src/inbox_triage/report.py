@@ -40,17 +40,25 @@ def _priority_table(counter: Counter[str], total: int) -> list[str]:
 
 
 def _short(text: str, limit: int = 90) -> str:
+    """Collapse whitespace, clip, and neutralise markdown that came from a model.
+
+    A pipe in a summary splits a three-column row into five cells, and a
+    bracketed span turns into a link nobody put there.
+    """
     cleaned = " ".join(text.split())
-    if len(cleaned) <= limit:
-        return cleaned
-    return cleaned[: limit - 1] + "…"
+    if len(cleaned) > limit:
+        cleaned = cleaned[: limit - 1] + "…"
+    return cleaned.replace("|", "\\|").replace("[", "\\[").replace("]", "\\]")
 
 
 def _record_list(records: list[TriageRecord]) -> list[str]:
-    lines = ["| ID | Канал | Суть |", "|---|---|---|"]
+    lines = ["| ID | Канал | Суть | Що запитати |", "|---|---|---|---|"]
     for record in records:
         summary = record.extraction.short_summary if record.extraction else record.raw_text
-        lines.append(f"| {record.id} | {record.channel} | {_short(summary)} |")
+        questions = ""
+        if record.extraction and record.extraction.clarification_questions:
+            questions = "; ".join(_short(q, 60) for q in record.extraction.clarification_questions)
+        lines.append(f"| {record.id} | {record.channel} | {_short(summary)} | {questions} |")
     lines.append("")
     return lines
 
