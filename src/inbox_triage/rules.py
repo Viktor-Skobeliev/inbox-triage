@@ -88,7 +88,6 @@ INJECTION_PATTERN = re.compile(
 
 SHORT_TEXT_CHARS = 40
 MAX_SUMMARY_CHARS = 300
-MAX_TEXT_CHARS = 8000
 
 FLAG_UNGROUNDED_SIGNAL = "ungrounded_urgency_signal_removed"
 FLAG_URGENCY_IGNORED = "urgency_marker_in_text_but_priority_not_high"
@@ -104,6 +103,7 @@ FLAG_UNGROUNDED_SYSTEM = "system_not_found_in_text"
 FLAG_SUMMARY_TOO_LONG = "summary_longer_than_one_sentence"
 FLAG_DEPARTMENT_HINT_IGNORED = "department_named_in_text_but_left_empty"
 FLAG_DEPARTMENT_INVENTED = "department_not_named_in_text"
+FLAG_DEPARTMENT_CONTRADICTS = "department_contradicts_the_text"
 FLAG_POSSIBLE_INJECTION = "possible_prompt_injection_in_text"
 
 ACTIONABLE_TYPES = {WorkItemType.PROJECT, WorkItemType.ONE_OFF, WorkItemType.INCIDENT}
@@ -242,6 +242,14 @@ def apply_rules(
     elif data.target_department is not None and hinted is None:
         # "хлопці треба бот" came back as it/підтримка on the first live run.
         flags.append(FLAG_DEPARTMENT_INVENTED)
+    elif (
+        data.target_department is not None
+        and hinted is not None
+        and data.target_department is not hinted
+    ):
+        # The loudest of the three: the text names one department and the
+        # answer says another, which is a misrouted task rather than a gap.
+        flags.append(FLAG_DEPARTMENT_CONTRADICTS)
 
     # 12. "One sentence" is in the spec, so it is checkable.
     if len(data.short_summary) > MAX_SUMMARY_CHARS:
