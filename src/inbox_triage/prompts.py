@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 from enum import Enum
 
-from .models import Category, Department, Language, Priority, WorkItemType
+from .models import Category, Department, Priority, WorkItemType
 
 PROMPT_VERSION = "v1"
 
@@ -42,8 +42,6 @@ SCHEMA_BLOCK = f"""{{
   "requested_actions": ["конкретна дія", "..."],
   "needs_clarification": true | false,
   "work_item_type": {_values(WorkItemType)},
-  "is_recurring": true | false,
-  "language": {_values(Language)},
   "mentioned_systems": ["Google Ads", "PlanFix", "..."],
   "urgency_signals": ["дослівна цитата з тексту"],
   "clarification_questions": ["що саме треба запитати в автора"]
@@ -71,8 +69,9 @@ priority - з тону і змісту, не з ввічливості.
 - "medium": є дедлайн або відчутний ручний біль, але не горить.
 - "low": ідея на майбутнє, автор сам каже, що не терміново.
 
-target_department - відділ, який просить. Якщо з тексту не видно, став null.
-Не вгадуй за темою запиту: питання про рекламу може прийти з аналітики.
+target_department - відділ, який ПРОСИТЬ (замовник), а не той, хто робитиме.
+Якщо з тексту не видно, став null. Не вгадуй за темою запиту: питання про
+рекламу може прийти з аналітики.
 
 needs_clarification - true, якщо запит неможливо взяти в роботу як є:
 не зрозуміло, що саме треба, або немає жодної конкретики.
@@ -81,9 +80,6 @@ clarification_questions - якщо needs_clarification=true, напиши 1-3 к
 питання, які треба поставити автору, щоб запит можна було оцінити. Не загальні
 ("уточніть деталі"), а предметні ("які саме дані мають бути в таблиці?").
 Якщо needs_clarification=false, лиши порожній список.
-
-is_recurring - true, якщо йдеться про повторюваний процес (щотижня, щодня,
-"кожного разу"), false - якщо про одну доставку.
 
 mentioned_systems - тільки назви систем, які справді згадані в тексті.
 
@@ -102,7 +98,7 @@ timestamp: 2026-05-14 16:20
 text: "терміново! до завтрашньої планірки треба вигрузка всіх повернень за квартал по магазину, клієнтський відділ дуже просить"
 
 Вихід:
-{"category": "звіт/аналітика", "target_department": "продажі", "priority": "high", "short_summary": "Потрібна разова вигрузка повернень за квартал до завтрашньої планірки.", "requested_actions": ["Вивантажити список повернень за квартал по магазину"], "needs_clarification": false, "work_item_type": "one_off", "is_recurring": false, "language": "uk", "mentioned_systems": [], "urgency_signals": ["терміново", "до завтрашньої планірки"], "clarification_questions": []}
+{"category": "звіт/аналітика", "target_department": "продажі", "priority": "high", "short_summary": "Потрібна разова вигрузка повернень за квартал до завтрашньої планірки.", "requested_actions": ["Вивантажити список повернень за квартал по магазину"], "needs_clarification": false, "work_item_type": "one_off", "mentioned_systems": [], "urgency_signals": ["терміново", "до завтрашньої планірки"], "clarification_questions": []}
 
 Зверни увагу: це "one_off", а не "project" - просять дані один раз, а не автоматизацію."""
 

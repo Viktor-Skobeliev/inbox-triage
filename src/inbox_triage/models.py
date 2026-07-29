@@ -2,13 +2,14 @@
 
 Two layers on purpose:
 
-* ``RequestExtraction`` is what the model is allowed to produce. It is strict:
-  unknown fields are rejected, enums are closed, empty strings do not pass.
+* ``RequestExtraction`` is what the model is allowed to produce: closed enums,
+  no empty strings, bounded lengths. Unknown keys are dropped by
+  ``normalise_payload`` before validation rather than rejected here.
 * ``TriageRecord`` wraps the original row and carries everything the pipeline
   learned about it, including the failure path when extraction never succeeded.
 
-Keeping them apart means a bad model response can never corrupt the output
-file: a record with ``status="failed"`` still has its id, channel and raw text.
+Keeping them apart means a bad model response cannot corrupt the output file:
+a record with ``status="failed"`` still has its id, channel and raw text.
 """
 
 from __future__ import annotations
@@ -75,17 +76,11 @@ class WorkItemType(StrEnum):
     NON_ACTIONABLE = "non_actionable"
 
 
-class Language(StrEnum):
-    """Routing signal: REQ-006 arrives in English with a Ukrainian sign-off, so
-    the reply has to be written in a different language than the rest.
-    """
-
-    UK = "uk"
-    EN = "en"
-    MIXED = "mixed"
-
-
-NonEmptyStr = Annotated[str, Field(min_length=1)]
+# Bounded on purpose: with no upper limit a runaway response becomes a
+# multi-megabyte output.json that still validates. A cap turns it into an
+# ordinary validation error, which the repair loop already handles.
+NonEmptyStr = Annotated[str, Field(min_length=1, max_length=300)]
+SummaryStr = Annotated[str, Field(min_length=1, max_length=400)]
 
 
 class RequestExtraction(BaseModel):
@@ -100,29 +95,27 @@ class RequestExtraction(BaseModel):
     category: Category
     target_department: Department | None
     priority: Priority
-    short_summary: NonEmptyStr
-    requested_actions: list[NonEmptyStr] = Field(default_factory=list)
+    short_summary: SummaryStr
+    requested_actions: list[NonEmptyStr] = Field(default_factory=list, max_length=20)
     needs_clarification: bool
 
     # --- extensions, each earned by a specific row in the dataset ---
     work_item_type: WorkItemType
-    is_recurring: bool = Field(
-        description="True when the request is about a repeating process rather than a "
-        "single delivery. REQ-001 is weekly, REQ-005 is one evening."
-    )
-    language: Language
     mentioned_systems: list[NonEmptyStr] = Field(
         default_factory=list,
+        max_length=20,
         description="Named products the work touches (Google Ads, PlanFix, BigQuery). "
         "Used to route to whoever owns the integration and to spot duplicates.",
     )
     urgency_signals: list[NonEmptyStr] = Field(
         default_factory=list,
+        max_length=20,
         description="Verbatim fragments that justify the priority. Makes priority "
         "auditable instead of taking the model's word for it.",
     )
     clarification_questions: list[NonEmptyStr] = Field(
         default_factory=list,
+        max_length=20,
         description="What to ask the author when the request cannot be worked as is. "
         "A bare needs_clarification flag makes the reader open the original text "
         "anyway; the questions make the report actionable.",
@@ -212,6 +205,8 @@ class RunMetadata(BaseModel):
 
     started_at: str
     finished_at: str
+    provider: str
+    base_url: str
     model: str
     temperature: float
     prompt_version: str

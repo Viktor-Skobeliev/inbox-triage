@@ -15,7 +15,7 @@ import json
 from enum import Enum
 from typing import Any
 
-from .models import Category, Department, Language, Priority, WorkItemType
+from .models import Category, Department, Priority, WorkItemType
 
 _FENCE = "```"
 
@@ -87,16 +87,6 @@ _WORK_ITEM_ALIASES: dict[str, WorkItemType] = {
     "вопрос": WorkItemType.QUESTION,
 }
 
-_LANGUAGE_ALIASES: dict[str, Language] = {
-    "ukrainian": Language.UK,
-    "українська": Language.UK,
-    "ua": Language.UK,
-    "english": Language.EN,
-    "англійська": Language.EN,
-    "змішана": Language.MIXED,
-    "mixed": Language.MIXED,
-}
-
 _TRUE_WORDS = {"true", "yes", "так", "да"}
 _FALSE_WORDS = {"false", "no", "ні", "нет"}
 _NULL_WORDS = {"", "null", "none", "n/a", "невідомо", "не зрозуміло", "unknown", "-"}
@@ -110,8 +100,6 @@ ALLOWED_FIELDS = frozenset(
         "requested_actions",
         "needs_clarification",
         "work_item_type",
-        "is_recurring",
-        "language",
         "mentioned_systems",
         "urgency_signals",
         "clarification_questions",
@@ -164,11 +152,12 @@ def _iter_candidates(text: str) -> list[str]:
 
 
 def extract_json_object(text: str) -> dict[str, Any]:
-    """Pull the first parseable JSON object out of a model response.
+    """Pull the answer object out of a model response.
 
-    Tries every candidate rather than only the first ``{``: prose like
-    "Ось результат {ключ: значення}:" would otherwise swallow the real object
-    sitting on the next line.
+    Two passes over every balanced ``{...}`` span. The first looks for an
+    object that carries at least one field of the schema, the second accepts
+    any object. Without the first pass a chatty preamble that happens to be
+    valid JSON wins over the real answer and costs a repair round.
     """
     if not text or not text.strip():
         raise ParseError("empty response")
@@ -192,13 +181,20 @@ def extract_json_object(text: str) -> dict[str, Any]:
     if not spans:
         raise ParseError("no JSON object found in response")
 
+    objects: list[dict[str, Any]] = []
     for span in spans:
         try:
             parsed = json.loads(span)
         except json.JSONDecodeError:
             continue
         if isinstance(parsed, dict):
-            return parsed
+            objects.append(parsed)
+
+    for obj in objects:
+        if {str(key).strip().lower() for key in obj} & ALLOWED_FIELDS:
+            return obj
+    if objects:
+        return objects[0]
 
     if not spans[-1].rstrip().endswith("}"):
         raise ParseError("JSON object is truncated (unbalanced braces)")
@@ -308,7 +304,6 @@ def normalise_payload(payload: dict[str, Any]) -> tuple[dict[str, Any], list[str
         ("priority", Priority, _PRIORITY_ALIASES),
         ("target_department", Department, _DEPARTMENT_ALIASES),
         ("work_item_type", WorkItemType, _WORK_ITEM_ALIASES),
-        ("language", Language, _LANGUAGE_ALIASES),
     ]
     for key, enum_cls, aliases in enum_fields:
         if key not in data:
@@ -329,13 +324,12 @@ def normalise_payload(payload: dict[str, Any]) -> tuple[dict[str, Any], list[str
         notes.append(f"unknown department {dept!r} mapped to '{Department.OTHER.value}'")
         data["target_department"] = Department.OTHER
 
-    for key in ("needs_clarification", "is_recurring"):
-        if key in data:
-            original = data[key]
-            coerced = _coerce_bool(original)
-            if coerced is not original:
-                notes.append(f"normalised {key}={original!r}")
-            data[key] = coerced
+    if "needs_clarification" in data:
+        original = data["needs_clarification"]
+        coerced = _coerce_bool(original)
+        if coerced is not original:
+            notes.append(f"normalised needs_clarification={original!r}")
+        data["needs_clarification"] = coerced
 
     for key in _LIST_FIELDS:
         if key in data:

@@ -23,8 +23,6 @@ VALID_PAYLOAD: dict[str, Any] = {
     "requested_actions": ["Автоматизувати щотижневий звіт по Google Ads"],
     "needs_clarification": False,
     "work_item_type": "project",
-    "is_recurring": True,
-    "language": "uk",
     "mentioned_systems": ["Google Ads"],
     "urgency_signals": [],
     "clarification_questions": [],
