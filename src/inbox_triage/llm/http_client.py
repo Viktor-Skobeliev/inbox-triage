@@ -186,31 +186,49 @@ class ChatClient:
         )
 
     def _read(self, response: httpx.Response) -> LLMResponse:
+        """Read a 200 response defensively.
+
+        Every field below has been seen wrong behind a gateway, and a raw
+        AttributeError here would escape as something the pipeline cannot turn
+        into a failed row: it would take the whole run down instead.
+        """
         try:
             body = response.json()
         except ValueError as exc:
             raise LLMError(f"{self.name}: response body is not JSON: {exc}") from exc
 
-        # OpenRouter can answer 200 with an error object instead of choices.
-        if isinstance(body.get("error"), dict):
-            raise LLMError(f"{self.name}: {body['error'].get('message', body['error'])}")
+        if not isinstance(body, dict):
+            raise LLMError(f"{self.name}: response body is {type(body).__name__}, expected object")
 
-        choices = body.get("choices") or []
-        if not choices:
+        # OpenRouter can answer 200 with an error object instead of choices.
+        error = body.get("error")
+        if isinstance(error, dict):
+            raise LLMError(f"{self.name}: {error.get('message', error)}")
+        if isinstance(error, str) and error:
+            raise LLMError(f"{self.name}: {error}")
+
+        choices = body.get("choices")
+        if not isinstance(choices, list) or not choices:
             raise LLMError(f"{self.name}: response contains no choices")
 
-        message = choices[0].get("message") or {}
-        text = (message.get("content") or "").strip()
+        first = choices[0]
+        if not isinstance(first, dict):
+            raise LLMError(f"{self.name}: malformed choice: {type(first).__name__}")
+
+        message = first.get("message")
+        content = message.get("content") if isinstance(message, dict) else None
+        text = content.strip() if isinstance(content, str) else ""
         if not text:
-            reason = choices[0].get("finish_reason", "unknown")
+            reason = first.get("finish_reason", "unknown")
             raise LLMError(f"{self.name}: empty content (finish_reason: {reason})")
 
-        usage_block = body.get("usage") or {}
+        usage_block = body.get("usage")
+        usage_block = usage_block if isinstance(usage_block, dict) else {}
         return LLMResponse(
             text=text,
             usage=TokenUsage(
-                prompt_tokens=int(usage_block.get("prompt_tokens") or 0),
-                completion_tokens=int(usage_block.get("completion_tokens") or 0),
+                prompt_tokens=_as_int(usage_block.get("prompt_tokens")),
+                completion_tokens=_as_int(usage_block.get("completion_tokens")),
             ),
         )
 
