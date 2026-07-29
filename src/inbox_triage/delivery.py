@@ -70,28 +70,46 @@ class TelegramSink:
 
     name = "telegram"
 
-    def __init__(self, token: str, chat_id: str, *, timeout: float = 15.0) -> None:
+    def __init__(
+        self,
+        token: str,
+        chat_id: str,
+        *,
+        timeout: float = 15.0,
+        client: httpx.Client | None = None,
+    ) -> None:
         self._token = token
         self._chat_id = chat_id
         self._timeout = timeout
+        # Injectable so the tests can drive this without a network call: an
+        # optional feature nobody ever exercises is worse than no feature.
+        self._client = client
 
     def publish(self, aggregates: Aggregates, run: RunMetadata) -> None:
+        url = f"{TELEGRAM_API}/bot{self._token}/sendMessage"
+        payload = {"chat_id": self._chat_id, "text": build_digest(aggregates, run)}
         try:
-            response = httpx.post(
-                f"{TELEGRAM_API}/bot{self._token}/sendMessage",
-                json={"chat_id": self._chat_id, "text": build_digest(aggregates, run)},
-                timeout=self._timeout,
-            )
+            if self._client is not None:
+                response = self._client.post(url, json=payload, timeout=self._timeout)
+            else:
+                response = httpx.post(url, json=payload, timeout=self._timeout)
         except httpx.HTTPError as exc:
-            log.warning("telegram digest not sent: %s", exc)
+            # The token sits in the URL, so log the exception type and message
+            # only. httpx puts the full URL into str() of some errors.
+            log.warning("telegram digest not sent: %s", type(exc).__name__)
             return
 
         if response.status_code != 200:
-            # The token is in the URL, so log the status and the body only.
+            # The body is quoted because the reason matters, but Telegram
+            # echoes the request URL on some errors, and the token lives in
+            # that URL.
             log.warning(
                 "telegram digest not sent: HTTP %s %s",
                 response.status_code,
-                response.text[:200],
+                self._scrub(response.text[:200]),
             )
             return
         log.info("telegram digest sent")
+
+    def _scrub(self, text: str) -> str:
+        return text.replace(self._token, "[REDACTED]") if self._token else text

@@ -13,6 +13,18 @@ Output of a real run over the 18 supplied rows is in [`examples/`](examples/).
 The report itself is written in Ukrainian, since that is the language of the
 inbox and of the people who read it.
 
+**Short on time?** Three files carry the idea:
+
+- [`src/inbox_triage/triage.py`](src/inbox_triage/triage.py) - the loop that
+  validates the model's answer and, when it fails, sends the validator's own
+  message back as a repair prompt. When the attempts run out the row becomes a
+  `failed` record instead of an exception.
+- [`src/inbox_triage/rules.py`](src/inbox_triage/rules.py) - deterministic
+  checks that compare the model against the request text: an urgency quote must
+  exist in the original, a department is checked in three directions.
+- [`examples/report.md`](examples/report.md) - what the run actually produced:
+  0 failed, 2 repairs, one duplicate found, 32,243 tokens.
+
 ---
 
 ## Time and tooling
@@ -28,7 +40,8 @@ dataset are traps are mine; the code and the tests we wrote together, and then I
 ran reviews and live runs and fixed what they showed. Two of those runs changed
 the solution: the first found no duplicates at all, because the pass only saw
 one-line summaries instead of the text, and the second showed the model
-inventing a department where the text names none.
+inventing a department where the text names none. Both fixes are in the
+history.
 
 ---
 
@@ -95,6 +108,27 @@ Exit codes: `0` when every request was parsed, `1` when at least one ended up
 `failed`, `2` when the input file or the key is unusable. Files are written in
 every case except the last, and written atomically: an interrupted run cannot
 leave a truncated `output.json` where the previous good one was.
+
+### Telegram digest
+
+Optional, off unless `--telegram` is passed. It posts a short summary of the run
+to a chat: how many requests, how many need clarification, which ones are high
+priority, and what the run cost in tokens.
+
+Two values are read from the environment, nothing is hardcoded:
+
+```bash
+TELEGRAM_BOT_TOKEN=...   # from @BotFather: /newbot
+TELEGRAM_CHAT_ID=...     # any chat the bot can post to
+```
+
+To find a chat id: send the bot any message, then open
+`https://api.telegram.org/bot<TOKEN>/getUpdates` and read `result[].message.chat.id`.
+A private chat gives a positive number, a group gives a negative one; both work.
+
+Delivery is best effort. If the token is wrong, the chat is unreachable or the
+network is down, the run logs a warning and still writes its files: the files
+are the deliverable, this is a convenience on top.
 
 ### Docker
 
@@ -301,13 +335,12 @@ choose. All that can be claimed is that the output is valid, internally
 consistent and backed by quotes from the source. That is not the same as
 correct.
 
-What the run in `examples/` shows: over 18 rows nothing ended up `failed`, four
-answers needed repairing and went through on the second or third attempt, and
-the REQ-013 duplicate was found. The rules caught six places where the output
-diverged from the text: three departments filled in where the text names none,
-plus a request queued with no action, a `non_actionable` item with a list of
-actions, and `needs_clarification` with no question for the author. But that is
-one run on one model, not a measurement.
+What the run in `examples/` shows: over 18 rows nothing ended up `failed`, two
+answers needed repairing and went through on the second attempt, and the
+REQ-013 duplicate was found. The rules caught three places where the output
+contradicted itself: two requests queued for work with no action written down,
+and a `non_actionable` item carrying a list of actions. But that is one run on
+one model, not a measurement.
 
 How to close it: label 100-150 requests by hand, compute accuracy per field and
 a confusion matrix over the categories. Without that, any number about
@@ -345,8 +378,8 @@ non-deterministic, and deleting the cache brings the spread back.
 ### Token cost
 
 Counted and reported in `report.md` and `output.json` (`run.token_usage`).
-From the run in `examples/`: 18 requests, 24 calls (18 extractions, 5 repair
-attempts and the duplicate pass), 30,821 tokens of which 27,483 are input. So
+From the run in `examples/`: 18 requests, 21 calls (18 extractions, 2 repair
+attempts and the duplicate pass), 32,243 tokens of which 28,974 are input. So
 the main cost is the instructions repeated on every request.
 
 How to bring that down at scale: move the rules into the system instruction and

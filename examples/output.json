@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
   "run": {
-    "started_at": "2026-07-29T15:37:26+00:00",
-    "finished_at": "2026-07-29T15:37:54+00:00",
+    "started_at": "2026-07-29T16:32:06+00:00",
+    "finished_at": "2026-07-29T16:32:24+00:00",
     "provider": "openrouter",
     "base_url": "https://openrouter.ai/api/v1",
     "model": "google/gemini-2.5-flash",
@@ -12,12 +12,12 @@
     "total_requests": 18,
     "succeeded": 18,
     "failed": 0,
-    "retried": 4,
+    "retried": 2,
     "cache_hits": 0,
-    "llm_calls": 24,
+    "llm_calls": 21,
     "token_usage": {
-      "prompt_tokens": 27483,
-      "completion_tokens": 3338
+      "prompt_tokens": 28974,
+      "completion_tokens": 3269
     }
   },
   "records": [
@@ -64,23 +64,24 @@
         "category": "автоматизація",
         "target_department": null,
         "priority": "medium",
-        "short_summary": "Потрібен бот.",
-        "requested_actions": [
-          "Створити бота"
-        ],
+        "short_summary": "Потрібен бот",
+        "requested_actions": [],
         "needs_clarification": true,
-        "work_item_type": "project",
+        "work_item_type": "one_off",
         "mentioned_systems": [],
         "urgency_signals": [],
         "clarification_questions": [
-          "Який функціонал має виконувати бот?",
-          "Для якої платформи потрібен бот (Telegram, Viber, інше)?",
+          "Який функціонал повинен мати бот?",
+          "Для якої платформи потрібен бот?",
           "Яка мета створення бота?"
         ]
       },
       "duplicate_of": null,
-      "rule_flags": [],
-      "attempts": 1,
+      "rule_flags": [
+        "recovered after 2 attempts",
+        "actionable_but_no_requested_actions"
+      ],
+      "attempts": 2,
       "error": null,
       "raw_response": null
     },
@@ -122,24 +123,22 @@
       "status": "ok",
       "extraction": {
         "category": "питання/консультація",
-        "target_department": "контент",
+        "target_department": null,
         "priority": "low",
-        "short_summary": "Запит щодо можливості використання AI для оцінки якості статей у блозі перед публікацією.",
+        "short_summary": "Запит на теоретичну консультацію щодо можливості оцінки якості статей блогу за допомогою AI.",
         "requested_actions": [],
         "needs_clarification": false,
         "work_item_type": "question",
         "mentioned_systems": [],
         "urgency_signals": [
-          "Поки що нічого впроваджувати не треба, просто цікаво ваша думка."
+          "Поки що нічого впроваджувати не треба",
+          "просто цікаво ваша думка"
         ],
         "clarification_questions": []
       },
       "duplicate_of": null,
-      "rule_flags": [
-        "recovered after 2 attempts",
-        "department_not_named_in_text"
-      ],
-      "attempts": 2,
+      "rule_flags": [],
+      "attempts": 1,
       "error": null,
       "raw_response": null
     },
@@ -153,7 +152,7 @@
         "category": "звіт/аналітика",
         "target_department": "фінанси/бухгалтерія",
         "priority": "high",
-        "short_summary": "Потрібно вивантажити список контрагентів з витратами понад 50к за травень до кінця сьогоднішнього дня.",
+        "short_summary": "Потрібна вивантаження списку контрагентів з витратами понад 50к за травень до кінця дня.",
         "requested_actions": [
           "Вивантажити список контрагентів з витратами понад 50к за травень"
         ],
@@ -164,7 +163,7 @@
           "ГОРИТЬ",
           "Сьогодні до вечора",
           "терміново",
-          "швидко"
+          "можете швидко?"
         ],
         "clarification_questions": []
       },
@@ -182,13 +181,13 @@
       "status": "ok",
       "extraction": {
         "category": "автоматизація",
-        "target_department": "аналітика",
+        "target_department": null,
         "priority": "medium",
-        "short_summary": "Потрібен сервіс для автоматичного створення короткого звіту з аналітики BigQuery у Google Doc.",
+        "short_summary": "Потрібен сервіс для автоматичного створення короткого текстового звіту про зміни тиждень до тижня на основі експорту аналітики з BigQuery.",
         "requested_actions": [
-          "розробити сервіс для автоматичного створення звітів",
-          "інтегрувати з BigQuery",
-          "генерувати звіт у Google Doc"
+          "Розробити сервіс для обробки експорту з BigQuery",
+          "Генерувати короткий текстовий звіт про зміни тиждень до тижня",
+          "Виводити звіт у Google Doc"
         ],
         "needs_clarification": false,
         "work_item_type": "project",
@@ -200,11 +199,8 @@
         "clarification_questions": []
       },
       "duplicate_of": null,
-      "rule_flags": [
-        "recovered after 2 attempts",
-        "department_not_named_in_text"
-      ],
-      "attempts": 2,
+      "rule_flags": [],
+      "attempts": 1,
       "error": null,
       "raw_response": null
     },
@@ -367,7 +363,7 @@
         "priority": "medium",
         "short_summary": "Запит на закупівлю нового ноутбука для SMM-відділу.",
         "requested_actions": [
-          "Купити новий потужний ноутбук для рендеру відео"
+          "Подати заявку на закупівлю ноутбука"
         ],
         "needs_clarification": false,
         "work_item_type": "non_actionable",
@@ -393,9 +389,9 @@
         "category": "звіт/аналітика",
         "target_department": null,
         "priority": "medium",
-        "short_summary": "Запит на отримання того ж звіту по Google Ads, що був замовлений раніше іншим членом команди.",
+        "short_summary": "Потрібно налаштувати отримання звіту по Google Ads, який вже надсилається іншому члену команди.",
         "requested_actions": [
-          "Налаштувати отримання звіту по Google Ads для нового користувача"
+          "Налаштувати отримання звіту по Google Ads"
         ],
         "needs_clarification": false,
         "work_item_type": "project",
@@ -421,10 +417,9 @@
         "category": "автоматизація",
         "target_department": null,
         "priority": "low",
-        "short_summary": "Пропозиція розглянути аналогічне рішення для автоматизації на основі зовнішнього інструменту.",
+        "short_summary": "Пропозиція розглянути інструмент для можливої автоматизації.",
         "requested_actions": [
-          "Розглянути інструмент за посиланням",
-          "Оцінити можливість створення схожого рішення"
+          "Розглянути інструмент за посиланням"
         ],
         "needs_clarification": false,
         "work_item_type": "project",
@@ -477,23 +472,21 @@
       "status": "ok",
       "extraction": {
         "category": "баг/підтримка",
-        "target_department": "it/підтримка",
-        "priority": "medium",
-        "short_summary": "Запит щодо коректності відповідей асистента по базі знань",
-        "requested_actions": [],
-        "needs_clarification": true,
+        "target_department": null,
+        "priority": "low",
+        "short_summary": "Запит щодо некоректних відповідей асистента по базі знань.",
+        "requested_actions": [
+          "З'ясувати, чому асистент по базі знань іноді дає відповіді не по темі"
+        ],
+        "needs_clarification": false,
         "work_item_type": "question",
         "mentioned_systems": [],
         "urgency_signals": [],
         "clarification_questions": []
       },
       "duplicate_of": null,
-      "rule_flags": [
-        "recovered after 3 attempts",
-        "needs_clarification_without_questions",
-        "department_not_named_in_text"
-      ],
-      "attempts": 3,
+      "rule_flags": [],
+      "attempts": 1,
       "error": null,
       "raw_response": null
     },
@@ -507,16 +500,16 @@
         "category": "інтеграція",
         "target_department": null,
         "priority": "high",
-        "short_summary": "Потрібна інтеграція Slack з PlanFix для автоматичного створення тікетів із завдань каналу #support.",
+        "short_summary": "Потрібна інтеграція Slack з PlanFix для автоматичного створення тікетів із каналу #support.",
         "requested_actions": [
           "Інтегрувати Slack з PlanFix",
-          "Налаштувати автоматичне створення тікетів у PlanFix із завдань каналу #support"
+          "Налаштувати автоматичне створення тікетів у PlanFix з каналу #support"
         ],
         "needs_clarification": false,
         "work_item_type": "project",
         "mentioned_systems": [
-          "Slack",
-          "PlanFix"
+          "слака",
+          "планфіксом"
         ],
         "urgency_signals": [
           "терміново",
@@ -540,25 +533,20 @@
         "category": "звіт/аналітика",
         "target_department": "аналітика",
         "priority": "medium",
-        "short_summary": "Потрібен дашборд для щоденного відстеження аномалій у витратах по підрядниках з BigQuery.",
+        "short_summary": "Потрібен дашборд, який щоденно підтягує дані з BigQuery та показує аномалії у витратах по підрядниках з поясненнями.",
         "requested_actions": [
           "Створити дашборд",
           "Налаштувати щоденне підтягування даних з BigQuery",
           "Реалізувати виявлення аномалій у витратах по підрядниках",
           "Додати пояснення аномалій природною мовою"
         ],
-        "needs_clarification": true,
+        "needs_clarification": false,
         "work_item_type": "project",
         "mentioned_systems": [
           "BigQuery"
         ],
         "urgency_signals": [],
-        "clarification_questions": [
-          "Які саме метрики витрат потрібно відстежувати?",
-          "Які критерії вважаються аномалією (наприклад, відсоток зміни, абсолютне значення)?",
-          "Які джерела даних у BigQuery потрібно використовувати?",
-          "Які візуалізації бажані для дашборду?"
-        ]
+        "clarification_questions": []
       },
       "duplicate_of": null,
       "rule_flags": [],
