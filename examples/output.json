@@ -1,23 +1,23 @@
 {
   "schema_version": "1.0",
   "run": {
-    "started_at": "2026-07-29T10:42:07+00:00",
-    "finished_at": "2026-07-29T10:42:36+00:00",
+    "started_at": "2026-07-29T15:37:26+00:00",
+    "finished_at": "2026-07-29T15:37:54+00:00",
     "provider": "openrouter",
     "base_url": "https://openrouter.ai/api/v1",
     "model": "google/gemini-2.5-flash",
     "temperature": 0.0,
-    "prompt_version": "v1",
+    "prompt_version": "v2",
     "max_attempts": 3,
     "total_requests": 18,
     "succeeded": 18,
     "failed": 0,
-    "retried": 3,
+    "retried": 4,
     "cache_hits": 0,
-    "llm_calls": 23,
+    "llm_calls": 24,
     "token_usage": {
-      "prompt_tokens": 27959,
-      "completion_tokens": 3258
+      "prompt_tokens": 27483,
+      "completion_tokens": 3338
     }
   },
   "records": [
@@ -66,7 +66,7 @@
         "priority": "medium",
         "short_summary": "Потрібен бот.",
         "requested_actions": [
-          "Розробити бота"
+          "Створити бота"
         ],
         "needs_clarification": true,
         "work_item_type": "project",
@@ -74,7 +74,7 @@
         "urgency_signals": [],
         "clarification_questions": [
           "Який функціонал має виконувати бот?",
-          "Для якої платформи потрібен бот?",
+          "Для якої платформи потрібен бот (Telegram, Viber, інше)?",
           "Яка мета створення бота?"
         ]
       },
@@ -94,11 +94,11 @@
         "category": "автоматизація",
         "target_department": "продажі",
         "priority": "medium",
-        "short_summary": "Автоматичне формування саммарі та списку домовленостей з транскриптів дзвінків та інтеграція з PlanFix.",
+        "short_summary": "Запит на автоматичне формування саммарі та списку домовленостей з транскриптів дзвінків та їх інтеграцію в PlanFix.",
         "requested_actions": [
-          "автоматичне формування саммарі дзвінків",
-          "автоматичне формування списку домовленостей",
-          "інтеграція з PlanFix для додавання інформації в картку угоди"
+          "Автоматично формувати коротке саммарі по кожному дзвінку",
+          "Автоматично формувати список домовленостей по кожному дзвінку",
+          "Інтегрувати саммарі та домовленості в PlanFix у картку угоди"
         ],
         "needs_clarification": false,
         "work_item_type": "project",
@@ -109,10 +109,8 @@
         "clarification_questions": []
       },
       "duplicate_of": null,
-      "rule_flags": [
-        "recovered after 2 attempts"
-      ],
-      "attempts": 2,
+      "rule_flags": [],
+      "attempts": 1,
       "error": null,
       "raw_response": null
     },
@@ -124,22 +122,24 @@
       "status": "ok",
       "extraction": {
         "category": "питання/консультація",
-        "target_department": null,
+        "target_department": "контент",
         "priority": "low",
-        "short_summary": "Запит на теоретичну консультацію щодо можливості оцінки якості статей блогу за допомогою AI.",
+        "short_summary": "Запит щодо можливості використання AI для оцінки якості статей у блозі перед публікацією.",
         "requested_actions": [],
         "needs_clarification": false,
         "work_item_type": "question",
         "mentioned_systems": [],
         "urgency_signals": [
-          "Поки що нічого впроваджувати не треба",
-          "просто цікаво ваша думка"
+          "Поки що нічого впроваджувати не треба, просто цікаво ваша думка."
         ],
         "clarification_questions": []
       },
       "duplicate_of": null,
-      "rule_flags": [],
-      "attempts": 1,
+      "rule_flags": [
+        "recovered after 2 attempts",
+        "department_not_named_in_text"
+      ],
+      "attempts": 2,
       "error": null,
       "raw_response": null
     },
@@ -153,7 +153,7 @@
         "category": "звіт/аналітика",
         "target_department": "фінанси/бухгалтерія",
         "priority": "high",
-        "short_summary": "Потрібна вивантаження списку контрагентів з витратами понад 50к за травень до кінця дня.",
+        "short_summary": "Потрібно вивантажити список контрагентів з витратами понад 50к за травень до кінця сьогоднішнього дня.",
         "requested_actions": [
           "Вивантажити список контрагентів з витратами понад 50к за травень"
         ],
@@ -164,7 +164,7 @@
           "ГОРИТЬ",
           "Сьогодні до вечора",
           "терміново",
-          "можете швидко?"
+          "швидко"
         ],
         "clarification_questions": []
       },
@@ -182,13 +182,13 @@
       "status": "ok",
       "extraction": {
         "category": "автоматизація",
-        "target_department": null,
+        "target_department": "аналітика",
         "priority": "medium",
-        "short_summary": "Потрібен сервіс для автоматичного створення короткого текстового звіту про зміни тиждень до тижня на основі експорту аналітики з BigQuery.",
+        "short_summary": "Потрібен сервіс для автоматичного створення короткого звіту з аналітики BigQuery у Google Doc.",
         "requested_actions": [
-          "Розробити сервіс для обробки експорту з BigQuery",
-          "Генерувати короткий текстовий звіт про зміни тиждень до тижня",
-          "Виводити звіт у Google Doc"
+          "розробити сервіс для автоматичного створення звітів",
+          "інтегрувати з BigQuery",
+          "генерувати звіт у Google Doc"
         ],
         "needs_clarification": false,
         "work_item_type": "project",
@@ -200,8 +200,11 @@
         "clarification_questions": []
       },
       "duplicate_of": null,
-      "rule_flags": [],
-      "attempts": 1,
+      "rule_flags": [
+        "recovered after 2 attempts",
+        "department_not_named_in_text"
+      ],
+      "attempts": 2,
       "error": null,
       "raw_response": null
     },
@@ -248,7 +251,7 @@
         "category": "поза скоупом",
         "target_department": null,
         "priority": "low",
-        "short_summary": "Подяка за виконану роботу",
+        "short_summary": "Подяка за виконану роботу.",
         "requested_actions": [],
         "needs_clarification": false,
         "work_item_type": "non_actionable",
@@ -258,9 +261,9 @@
       },
       "duplicate_of": null,
       "rule_flags": [
-        "recovered after 3 attempts"
+        "recovered after 2 attempts"
       ],
-      "attempts": 3,
+      "attempts": 2,
       "error": null,
       "raw_response": null
     },
@@ -332,22 +335,22 @@
         "category": "звіт/аналітика",
         "target_department": null,
         "priority": "low",
-        "short_summary": "Запит на створення якоїсь таблички.",
-        "requested_actions": [
-          "Створити табличку"
-        ],
+        "short_summary": "Запит на створення якоїсь таблиці.",
+        "requested_actions": [],
         "needs_clarification": true,
-        "work_item_type": "question",
+        "work_item_type": "one_off",
         "mentioned_systems": [],
         "urgency_signals": [],
         "clarification_questions": [
-          "Які дані мають бути в табличці?",
-          "Для чого потрібна ця табличка?",
-          "Який формат таблички очікується (Excel, Google Sheets, тощо)?"
+          "Які дані мають бути в таблиці?",
+          "Для чого потрібна ця таблиця?",
+          "Який формат таблиці потрібен (Excel, Google Sheets, тощо)?"
         ]
       },
       "duplicate_of": null,
-      "rule_flags": [],
+      "rule_flags": [
+        "actionable_but_no_requested_actions"
+      ],
       "attempts": 1,
       "error": null,
       "raw_response": null
@@ -364,7 +367,7 @@
         "priority": "medium",
         "short_summary": "Запит на закупівлю нового ноутбука для SMM-відділу.",
         "requested_actions": [
-          "Подати заявку на закупівлю ноутбука"
+          "Купити новий потужний ноутбук для рендеру відео"
         ],
         "needs_clarification": false,
         "work_item_type": "non_actionable",
@@ -447,7 +450,7 @@
         "category": "автоматизація",
         "target_department": "контент",
         "priority": "medium",
-        "short_summary": "Команда контенту просить інструмент для автоматичного створення коротких постів для соцмереж з довгих інтерв'ю.",
+        "short_summary": "Потрібен інструмент для автоматичного створення 5 коротких постів для соцмереж з довгого інтерв'ю, зберігаючи tone of voice.",
         "requested_actions": [
           "Розробити інструмент для генерації постів для соцмереж з інтерв'ю"
         ],
@@ -476,23 +479,21 @@
         "category": "баг/підтримка",
         "target_department": "it/підтримка",
         "priority": "medium",
-        "short_summary": "Запит щодо нерелевантних відповідей асистента по базі знань.",
+        "short_summary": "Запит щодо коректності відповідей асистента по базі знань",
         "requested_actions": [],
         "needs_clarification": true,
-        "work_item_type": "incident",
+        "work_item_type": "question",
         "mentioned_systems": [],
         "urgency_signals": [],
         "clarification_questions": []
       },
       "duplicate_of": null,
       "rule_flags": [
-        "recovered after 2 attempts",
-        "actionable_but_no_requested_actions",
-        "needs_clarification_forced_true",
+        "recovered after 3 attempts",
         "needs_clarification_without_questions",
         "department_not_named_in_text"
       ],
-      "attempts": 2,
+      "attempts": 3,
       "error": null,
       "raw_response": null
     },
@@ -506,16 +507,16 @@
         "category": "інтеграція",
         "target_department": null,
         "priority": "high",
-        "short_summary": "Потрібна інтеграція Slack з PlanFix для автоматичного створення тікетів із каналу #support.",
+        "short_summary": "Потрібна інтеграція Slack з PlanFix для автоматичного створення тікетів із завдань каналу #support.",
         "requested_actions": [
           "Інтегрувати Slack з PlanFix",
-          "Налаштувати автоматичне створення тікетів у PlanFix з каналу #support"
+          "Налаштувати автоматичне створення тікетів у PlanFix із завдань каналу #support"
         ],
         "needs_clarification": false,
         "work_item_type": "project",
         "mentioned_systems": [
-          "слака",
-          "планфіксом"
+          "Slack",
+          "PlanFix"
         ],
         "urgency_signals": [
           "терміново",
@@ -546,13 +547,18 @@
           "Реалізувати виявлення аномалій у витратах по підрядниках",
           "Додати пояснення аномалій природною мовою"
         ],
-        "needs_clarification": false,
+        "needs_clarification": true,
         "work_item_type": "project",
         "mentioned_systems": [
           "BigQuery"
         ],
         "urgency_signals": [],
-        "clarification_questions": []
+        "clarification_questions": [
+          "Які саме метрики витрат потрібно відстежувати?",
+          "Які критерії вважаються аномалією (наприклад, відсоток зміни, абсолютне значення)?",
+          "Які джерела даних у BigQuery потрібно використовувати?",
+          "Які візуалізації бажані для дашборду?"
+        ]
       },
       "duplicate_of": null,
       "rule_flags": [],
